@@ -1,9 +1,16 @@
+'use client';
+
 import React, { useState } from 'react';
-import { Plus, Search, Filter, ArrowUpRight } from 'lucide-react';
-import NewProjectModal from '../modals/NewProjectModal';
-import AddDrawingModal from '../modals/AddDrawingModal';
+import { Plus, Search, Filter, ArrowUpRight, Edit2, ChevronRight } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const NewProjectModal = dynamic(() => import('../modals/NewProjectModal'), { ssr: false });
+const AddDrawingModal = dynamic(() => import('../modals/AddDrawingModal'), { ssr: false });
+
+import { useNavigate } from 'react-router-dom';
 
 const ProjectsView = () => {
+  const navigate = useNavigate();
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [showAddDrawingModal, setShowAddDrawingModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
@@ -38,9 +45,29 @@ const ProjectsView = () => {
     setShowAddDrawingModal(true);
   };
 
+  const handleNavigateToResults = (projectId) => {
+    if (!projectId) {
+      alert('프로젝트를 선택해주세요.');
+      return;
+    }
+    navigate(`/results/${projectId}`);
+  };
+  
+  const handleNavigateToUnrecognized = (projectId) => {
+    if (!projectId) {
+      alert('프로젝트를 선택해주세요.');
+      return;
+    }
+    navigate(`/unrecognized/${projectId}`);
+  };
+
   const handleAddDrawing = (project) => {
     setSelectedProject(project);
     setShowAddDrawingModal(true);
+  };
+
+  const handleProjectSelect = (projectId) => {
+    setSelectedProject(projectId);
   };
 
   return (
@@ -73,6 +100,47 @@ const ProjectsView = () => {
         </div>
       </div>
 
+      {/* Navigation Tabs */}
+      <div className="flex border-b">
+        <button
+          onClick={() => navigate(`/projects`)}
+          className="px-6 py-3 text-gray-700 border-b-2 border-purple-600 font-medium"
+        >
+          프로젝트 목록
+        </button>
+        <button
+          onClick={() => handleNavigateToResults(selectedProject?.id)}
+          className="px-6 py-3 text-gray-500 hover:text-gray-700 font-medium"
+        >
+          결과보기
+        </button>
+        <button
+          onClick={() => handleNavigateToUnrecognized(selectedProject?.id)}
+          className="px-6 py-3 text-gray-500 hover:text-gray-700 font-medium"
+        >
+          미인식/오인식
+        </button>
+      </div>
+
+      {/* 프로젝트 선택 드롭다운 */}
+      <div className="p-4 border-b">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          프로젝트 선택
+        </label>
+        <select
+          value={selectedProject?.id}
+          onChange={(e) => handleProjectSelect(e.target.value)}
+          className="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
+        >
+          <option value="">프로젝트를 선택하세요</option>
+          {projects.map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Projects Table */}
       <div className="flex-1 p-4 overflow-auto">
         <div className="bg-white rounded-lg shadow">
@@ -97,8 +165,6 @@ const ProjectsView = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   최종 수정일
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   작업
                 </th>
@@ -106,7 +172,13 @@ const ProjectsView = () => {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {projects.map((project) => (
-                <tr key={project.id} className="hover:bg-gray-50">
+                <tr 
+                  key={project.id} 
+                  className={`hover:bg-gray-50 cursor-pointer ${
+                    selectedProject?.id === project.id ? 'bg-purple-50' : ''
+                  }`}
+                  onClick={() => setSelectedProject(project)}
+                >
                   <td className="px-6 py-4">
                     <div className="font-medium text-gray-900">{project.name}</div>
                   </td>
@@ -125,20 +197,27 @@ const ProjectsView = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-gray-500">{project.lastUpdated}</td>
-                  <td className="px-6 py-4">
-                    <button 
-                      onClick={() => handleAddDrawing(project)}
-                      className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700"
-                    >
-                      도면 추가
-                    </button>
-                  </td>
                   <td className="px-6 py-4 text-right">
-                    <button 
-                      className="px-3 py-1.5 text-purple-600 border border-purple-600 text-sm rounded-lg hover:bg-purple-50"
-                    >
-                      상세보기
-                    </button>
+                    <div className="flex space-x-2 justify-end">
+                      <button 
+                        className="text-purple-600 hover:text-purple-700"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNavigateToUnrecognized(project.id);
+                        }}
+                      >
+                        <Edit2 className="w-5 h-5" />
+                      </button>
+                      <button 
+                        className="text-purple-600 hover:text-purple-700"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNavigateToResults(project.id);
+                        }}
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

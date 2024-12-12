@@ -1,5 +1,7 @@
+'use client';
+
 import React, { useState } from 'react';
-import { useRouter } from 'next/router';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   FolderKanban, 
@@ -14,7 +16,8 @@ import {
 } from 'lucide-react';
 
 const Sidebar = () => {
-  const router = useRouter();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isCompanyMenuOpen, setIsCompanyMenuOpen] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -29,7 +32,11 @@ const Sidebar = () => {
     { id: 'help', path: '/help', icon: <Bell />, label: '도움말' }
   ];
 
-  const isActive = (path) => router.pathname === path;
+  const isActive = (path) => location.pathname === path;
+
+  const handleNavigation = (path) => {
+    navigate(path);
+  };
 
   return (
     <div 
@@ -71,7 +78,7 @@ const Sidebar = () => {
           {mainMenuItems.map(item => (
             <button
               key={item.id}
-              onClick={() => router.push(item.path)}
+              onClick={() => handleNavigation(item.path)}
               className={`flex items-center ${
                 isCollapsed ? 'justify-center' : 'space-x-3'
               } w-full px-4 py-2 rounded-lg text-sm transition-colors ${
@@ -91,7 +98,7 @@ const Sidebar = () => {
           {secondaryMenuItems.map(item => (
             <button
               key={item.id}
-              onClick={() => router.push(item.path)}
+              onClick={() => handleNavigation(item.path)}
               className={`flex items-center ${
                 isCollapsed ? 'justify-center' : 'space-x-3'
               } w-full px-4 py-2 rounded-lg text-sm transition-colors ${

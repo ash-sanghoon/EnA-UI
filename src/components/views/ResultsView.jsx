@@ -60,22 +60,18 @@ const ResultsView = () => {
         )}
 
         {activeTab === 'symbol stats' && (
-          <div className="grid grid-cols-4 gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-medium text-gray-500">Total Symbols</h3>
-              <p className="text-2xl font-semibold mt-2">156</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-medium text-gray-500">Valves</h3>
-              <p className="text-2xl font-semibold mt-2">64</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-medium text-gray-500">Pumps</h3>
-              <p className="text-2xl font-semibold mt-2">12</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-medium text-gray-500">Instruments</h3>
-              <p className="text-2xl font-semibold mt-2">48</p>
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-medium mb-4">심볼 통계</h2>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                <span>Control Valve</span>
+                <span className="font-medium">23개</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                <span>Pump</span>
+                <span className="font-medium">15개</span>
+              </div>
+              {/* 추가 심볼 통계 */}
             </div>
           </div>
         )}

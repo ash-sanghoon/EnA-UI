@@ -1,10 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronRight, ChevronDown, Plus, Search, Settings, Filter } from 'lucide-react';
 
 const SymbolsView = () => {
   const [selectedIndustry, setSelectedIndustry] = useState(null);
   const [expandedItems, setExpandedItems] = useState({});
   const [selectedInstruments, setSelectedInstruments] = useState([]);
+  const [image, setImage] = useState(null);
+  const [detections, setDetections] = useState([]);
+  const [selectedBox, setSelectedBox] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [drawStart, setDrawStart] = useState({ x: 0, y: 0 });
+  const canvasRef = useRef(null);
 
   const industries = [
     {
@@ -52,6 +59,152 @@ const SymbolsView = () => {
     { id: 2, name: 'Control Valve', type: 'Valve', standard: 'ISO', usage: 92 },
     { id: 3, name: 'Pressure Sensor', type: 'Instrument', standard: 'ISA', usage: 78 }
   ];
+
+  useEffect(() => {
+    // Load image and detections from the backend
+    const loadData = async () => {
+      try {
+        const imageResponse = await fetch('/test_data/output_flow.png');
+        const imageBlob = await imageResponse.blob();
+        const imageUrl = URL.createObjectURL(imageBlob);
+        setImage(imageUrl);
+
+        const detectionsResponse = await fetch('/test_data/detection_results.json');
+        const detectionsData = await detectionsResponse.json();
+        setDetections(detectionsData.detections);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    };
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    if (!image || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      drawCanvas(ctx, img);
+    };
+    
+    img.src = image;
+  }, [image, detections]);
+
+  const drawCanvas = (ctx, img) => {
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.drawImage(img, 0, 0);
+
+    detections.forEach((detection, index) => {
+      const { x0, y0, x1, y1 } = detection.bbox;
+      ctx.strokeStyle = index === selectedBox ? '#00ff00' : '#ff0000';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+    });
+  };
+
+  const handleMouseDown = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Check if clicking on existing box
+    const clickedBoxIndex = detections.findIndex(detection => {
+      const { x0, y0, x1, y1 } = detection.bbox;
+      return x >= x0 && x <= x1 && y >= y0 && y <= y1;
+    });
+
+    if (clickedBoxIndex !== -1) {
+      setSelectedBox(clickedBoxIndex);
+      setIsDragging(true);
+    } else {
+      setIsDrawing(true);
+      setDrawStart({ x, y });
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging && !isDrawing) return;
+
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (isDragging && selectedBox !== null) {
+      const updatedDetections = [...detections];
+      const detection = updatedDetections[selectedBox];
+      const width = detection.bbox.x1 - detection.bbox.x0;
+      const height = detection.bbox.y1 - detection.bbox.y0;
+
+      detection.bbox.x0 = x - width / 2;
+      detection.bbox.y0 = y - height / 2;
+      detection.bbox.x1 = x + width / 2;
+      detection.bbox.y1 = y + height / 2;
+      detection.bbox.x_center = x;
+      detection.bbox.y_center = y;
+
+      setDetections(updatedDetections);
+    }
+
+    const ctx = canvas.getContext('2d');
+    drawCanvas(ctx, document.getElementById('source-image'));
+  };
+
+  const handleMouseUp = async (e) => {
+    if (isDrawing) {
+      const canvas = canvasRef.current;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      // Create new detection
+      const newDetection = {
+        class_name: "new_symbol",
+        confidence: 1.0,
+        bbox: {
+          x0: Math.min(drawStart.x, x),
+          y0: Math.min(drawStart.y, y),
+          x1: Math.max(drawStart.x, x),
+          y1: Math.max(drawStart.y, y),
+          x_center: (drawStart.x + x) / 2,
+          y_center: (drawStart.y + y) / 2,
+          width: Math.abs(x - drawStart.x),
+          height: Math.abs(y - drawStart.y)
+        }
+      };
+
+      setDetections([...detections, newDetection]);
+    }
+
+    // Save changes to backend
+    try {
+      const response = await fetch('/api/save-detections', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          detections: detections
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save detections');
+      }
+    } catch (error) {
+      console.error('Error saving detections:', error);
+    }
+
+    setIsDragging(false);
+    setIsDrawing(false);
+    setSelectedBox(null);
+  };
 
   const toggleExpand = (itemId) => {
     setExpandedItems(prev => ({
@@ -151,14 +304,38 @@ const SymbolsView = () => {
         </div>
       </div>
 
-      {/* Right Panel - Symbol Grid */}
+      {/* Right Panel - Symbol Grid and Canvas */}
       <div className="flex-1 p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-semibold">심볼 라이브러리</h1>
-          <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center">
-            <Plus className="w-4 h-4 mr-2" />
-            새 심볼 추가
-          </button>
+          <div className="flex gap-2">
+            <button 
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              onClick={() => setIsDrawing(true)}
+            >
+              Draw Box
+            </button>
+            <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center">
+              <Plus className="w-4 h-4 mr-2" />
+              새 심볼 추가
+            </button>
+          </div>
+        </div>
+
+        <div className="relative">
+          <img
+            id="source-image"
+            src={image}
+            style={{ display: 'none' }}
+            alt="Source"
+          />
+          <canvas
+            ref={canvasRef}
+            className="border border-gray-300"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+          />
         </div>
 
         <div className="grid grid-cols-4 gap-4">

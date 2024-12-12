@@ -1,5 +1,7 @@
+'use client';
+
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import dynamic from 'next/dynamic';
 import { 
   FileText, 
   AlertCircle, 
@@ -7,6 +9,15 @@ import {
   Clock,
   ArrowRight
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip
+} from 'recharts';
 
 const DashboardView = () => {
   // 샘플 데이터

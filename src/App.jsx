@@ -1,18 +1,47 @@
-import React from 'react';
-import Header from './components/layout/Header';
-import Sidebar from './components/layout/Sidebar';
+'use client';
 
-const App = ({ children }) => {
+import React, { useEffect, useState, lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+const Header = React.lazy(() => import('./components/layout/Header'));
+const Sidebar = React.lazy(() => import('./components/layout/Sidebar'));
+const DashboardView = React.lazy(() => import('./components/views/DashboardView'));
+const ProjectsView = React.lazy(() => import('./components/views/ProjectsView'));
+const SymbolsView = React.lazy(() => import('./components/views/SymbolsView'));
+const UnrecognizedView = React.lazy(() => import('./components/views/UnrecognizedView'));
+const ResultsView = React.lazy(() => import('./components/views/ResultsView'));
+
+const App = () => {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return null;
+  }
+
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-auto bg-gray-50">
-          {children}
-        </main>
-      </div>
-    </div>
+    <Suspense fallback={<div>Loading...</div>}>
+      <BrowserRouter>
+        <div className="flex h-screen">
+          <Sidebar />
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <Header />
+            <main className="flex-1 overflow-auto bg-gray-50">
+              <Routes>
+                <Route path="/" element={<DashboardView />} />
+                <Route path="/projects" element={<ProjectsView />} />
+                <Route path="/symbols" element={<SymbolsView />} />
+                <Route path="/results/:projectId" element={<ResultsView />} />
+                <Route path="/unrecognized/:projectId" element={<UnrecognizedView />} />
+              </Routes>
+            </main>
+          </div>
+        </div>
+      </BrowserRouter>
+    </Suspense>
   );
 };
 
