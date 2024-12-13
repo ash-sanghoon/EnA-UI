@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Upload } from 'lucide-react';
 
 const NewProjectModal = ({ isOpen, onClose, onNext }) => {
   const [formData, setFormData] = useState({
@@ -7,8 +7,9 @@ const NewProjectModal = ({ isOpen, onClose, onNext }) => {
     company: '',
     projectName: '',
     standard: '',
-    drawingCount: ''
   });
+  const [files, setFiles] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -17,9 +18,44 @@ const NewProjectModal = ({ isOpen, onClose, onNext }) => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleFileChange = (e) => {
+    setFiles([...e.target.files]);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onNext(formData);
+    setIsLoading(true);
+
+    try {
+      const formDataToSend = new FormData();
+      
+      // Append project data
+      Object.entries(formData).forEach(([key, value]) => {
+        formDataToSend.append(key, value);
+      });
+      
+      // Append files
+      files.forEach(file => {
+        formDataToSend.append('files', file);
+      });
+
+      const response = await fetch('/api/create-project', {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create project');
+      }
+
+      const data = await response.json();
+      onNext(data.project);
+    } catch (error) {
+      console.error('Error creating project:', error);
+      // Here you might want to show an error message to the user
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -124,19 +160,53 @@ const NewProjectModal = ({ isOpen, onClose, onNext }) => {
             </div>
           </div>
 
-          <div className="flex justify-end mt-6">
+          <div className="mt-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              도면 파일 업로드
+            </label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.png,.jpg,.jpeg"
+                onChange={handleFileChange}
+                className="hidden"
+                id="drawing-upload"
+              />
+              <label
+                htmlFor="drawing-upload"
+                className="cursor-pointer flex flex-col items-center"
+              >
+                <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                <p className="text-sm text-gray-500">클릭하여 도면 파일을 선택하세요</p>
+              </label>
+            </div>
+            {files.length > 0 && (
+              <div className="mt-2">
+                <p className="text-sm text-gray-600">선택된 파일: {files.length}개</p>
+                <ul className="mt-1 text-sm text-gray-500">
+                  {Array.from(files).map((file, index) => (
+                    <li key={index}>{file.name}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end space-x-3 mt-6">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg mr-2"
+              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
             >
               취소
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              disabled={isLoading || !formData.projectName || files.length === 0}
             >
-              다음
+              {isLoading ? '생성 중...' : '프로젝트 생성'}
             </button>
           </div>
         </form>

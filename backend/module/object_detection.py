@@ -75,7 +75,7 @@ if results[0].predictions:
                 "y_center": y_center,
                 "width": width,
                 "height": height,
-                "x0": x0,  # 추가: bbox 코너 좌표
+                "x0": x0,  
                 "y0": y0,
                 "x1": x1,
                 "y1": y1

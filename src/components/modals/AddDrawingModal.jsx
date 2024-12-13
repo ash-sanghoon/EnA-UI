@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Upload, Check, Loader } from 'lucide-react';
 
-const AddDrawingModal = ({ isOpen, onClose, onSubmit }) => {
+const AddDrawingModal = ({ isOpen, onClose, onSubmit, projectId = 'default' }) => {
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
@@ -20,32 +20,74 @@ const AddDrawingModal = ({ isOpen, onClose, onSubmit }) => {
     e.preventDefault();
   };
 
+  const uploadFile = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('projectId', projectId);
+
+    try {
+      const response = await fetch('/api/upload-drawing', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setUploading(true);
     
-    // 각 파일에 대한 초기 진행률 설정
     const initialProgress = {};
     files.forEach(file => {
       initialProgress[file.name] = 0;
     });
     setUploadProgress(initialProgress);
 
-    // 파일 업로드 시뮬레이션
-    for (const file of files) {
-      // 각 파일당 진행률 업데이트 시뮬레이션
-      for (let progress = 0; progress <= 100; progress += 10) {
+    try {
+      const uploadedFiles = [];
+      
+      for (const file of files) {
+        // Start progress animation
         setUploadProgress(prev => ({
           ...prev,
-          [file.name]: progress
+          [file.name]: 10
         }));
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-    }
 
-    // 업로드 완료 후 1초 대기
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    onSubmit(files);
+        // Upload file
+        const result = await uploadFile(file);
+        uploadedFiles.push(result);
+
+        // Complete progress
+        setUploadProgress(prev => ({
+          ...prev,
+          [file.name]: 100
+        }));
+
+        // Small delay to show completion
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      // Notify parent component
+      onSubmit(uploadedFiles);
+      
+      // Wait a moment before closing
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      onClose();
+    } catch (error) {
+      console.error('Upload failed:', error);
+      // Here you might want to show an error message to the user
+    } finally {
+      setUploading(false);
+    }
   };
 
   if (!isOpen) return null;
