@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Plus, Minus, Edit2, Save } from 'lucide-react';
+import { Plus, Minus, Edit2, Save, Hand } from 'lucide-react';
+import GraphVisualization from "./GraphVisualization.js";
 
 const UnrecognizedView = () => {
   const [selectedSymbol, setSelectedSymbol] = useState(null);
@@ -20,6 +21,9 @@ const UnrecognizedView = () => {
         </button>
         <button className="p-2 text-white hover:bg-purple-700 rounded">
           <Save className="w-5 h-5" />
+        </button>
+        <button className="p-2 text-white hover:bg-purple-700 rounded">
+          <Hand className="w-5 h-5" />
         </button>
       </div>
 
@@ -43,7 +47,7 @@ const UnrecognizedView = () => {
         <div className="absolute inset-0 m-20">
           {/* 여기에 도면과 심볼들이 표시됨 */}
           <div className="w-full h-full border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-            도면 영역
+            <GraphVisualization></GraphVisualization>
           </div>
         </div>
       </div>

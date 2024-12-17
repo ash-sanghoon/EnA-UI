@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { X, Upload } from 'lucide-react';
+import axios from 'axios';
 
 const NewProjectModal = ({ isOpen, onClose, onNext }) => {
   const [formData, setFormData] = useState({
@@ -7,9 +8,21 @@ const NewProjectModal = ({ isOpen, onClose, onNext }) => {
     company: '',
     projectName: '',
     standard: '',
+    uuid: '',
   });
+
+  const formDataRef = useRef(formData);
+  // useEffect로 value 업데이트 시 ref도 업데이트
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
+
   const [files, setFiles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const dragRef = useRef(null);
+  const fileId = useRef(0);
 
   const handleChange = (e) => {
     setFormData({
@@ -18,11 +31,197 @@ const NewProjectModal = ({ isOpen, onClose, onNext }) => {
     });
   };
 
-  const handleFileChange = (e) => {
-    setFiles([...e.target.files]);
+  const fetchData = async () => {
+    try {
+      // 4. axios를 사용해 JSON으로 POST 요청
+      const response = await axios.post("/api/project/create", {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("응답:", response.data);
+      const data = await response.data;
+      setFormData({
+        ...formData,
+        ["uuid"]: response.data.uuid
+      });
+      console.log(formData);
+    } catch (error) {
+      console.error("에러:", error.response ? error.response.data : error.message);
+      throw new Error('Failed to create project');
+    }
   };
 
+  // useEffect를 사용하여 컴포넌트 마운트 후 실행
+  useEffect(() => {
+    fetchData();
+  }, []); // 빈 배열([])을 의존성으로 추가하여 마운트 후 한 번만 실행
+
+  const handleFileChange1 = useCallback((e) => {
+    let selectFiles = [];
+    let tempFiles = files;
+    if (e.type === "drop") {
+        selectFiles = e.dataTransfer.files;
+    }
+    else {
+        selectFiles = e.target.files;
+    }
+
+    for (const file of selectFiles) {
+        tempFiles = [
+            ...tempFiles,
+            {
+                id: fileId.current++,
+                object: file
+            }
+        ];
+        const formData = new FormData();
+        formData.append('uploadFiles', file);
+        axios.post('/api/files/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        }).then((Response) => {
+            file.Response.data[0].uuid;
+        });
+    }
+    //setFiles([...e.target.files]);
+    setFiles(tempFiles);
+  }, [files]);
+  
+  const handleFileChange = useCallback(async (e) => {
+    let selectFiles = [];
+    if (e.type === "drop") {
+      selectFiles = e.dataTransfer.files;
+    }
+    else {
+      selectFiles = e.target.files;
+    }
+    if (!selectFiles || selectFiles.length === 0) return;
+  
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append("projectUuid", formDataRef.current.uuid);
+      Array.from(selectFiles).forEach((file) => {
+        formDataUpload.append('uploadFiles', file);
+      });
+  
+      const response = await axios.post('/api/files/upload', formDataUpload, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+  
+      // 응답으로 받은 파일 UUID 정보 저장
+      const uploadedFileUuids = response.data.map(fileInfo => ({
+        name: fileInfo.fileName,
+        uuid: fileInfo.uuid
+      }));
+  
+      // 기존 files 상태에 새로운 파일 UUID 추가
+      setFiles(prevFiles => [...prevFiles, ...uploadedFileUuids]);
+  
+    } catch (error) {
+      console.error('파일 업로드 중 오류 발생:', error);
+      // 필요한 경우 사용자에게 오류 표시
+    }
+  }, [setFiles]);  // setFiles를 의존성 배열에 추가
+
+  const handleFilterFile = useCallback((id) => {
+    setFiles(files.filter((file) => file.id !== id));
+  }, [files]);
+  const handleDragIn = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+  const handleDragOut = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.files) {
+        setIsDragging(true);
+    }
+  }, []);
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleFileChange(e);
+    setIsDragging(false);
+  }, [handleFileChange]);
+
+  const initDragEvents = useCallback(() => {
+    if (dragRef.current !== null) {
+        dragRef.current.addEventListener("dragenter", handleDragIn);
+        dragRef.current.addEventListener("dragleave", handleDragOut);
+        dragRef.current.addEventListener("dragover", handleDragOver);
+        dragRef.current.addEventListener("drop", handleDrop);
+    }
+  }, [handleDragIn, handleDragOut, handleDragOver, handleDrop]);
+  const resetDragEvents = useCallback(() => {
+    if (dragRef.current !== null) {
+        dragRef.current.removeEventListener("dragenter", handleDragIn);
+        dragRef.current.removeEventListener("dragleave", handleDragOut);
+        dragRef.current.removeEventListener("dragover", handleDragOver);
+        dragRef.current.removeEventListener("drop", handleDrop);
+    }
+  }, [handleDragIn, handleDragOut, handleDragOver, handleDrop]);
+
+  useEffect(() => {
+    initDragEvents();
+
+    return () => resetDragEvents();
+  }, [initDragEvents, resetDragEvents]);
+
   const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try{
+      const formDataToSend = new FormData();
+      
+      // Append project data
+      Object.entries(formData).forEach(([key, value]) => {
+        formDataToSend.append(key, value);
+      });
+
+      // 2. FormData를 일반 객체로 변환
+      const formDataToJson = {};
+      formDataToSend.forEach((value, key) => {
+        // Blob/File 객체를 제외하고는 그대로 저장
+        if (value instanceof Blob) {
+          formDataToJson[key] = value.name || "file";
+        } else {
+          formDataToJson[key] = value;
+        }
+      });
+
+      formDataToJson["files"] = files;
+
+      // 3. JSON으로 변환
+      const jsonData = JSON.stringify(formDataToJson);
+
+      // 4. axios를 사용해 JSON으로 POST 요청
+      const response = await axios.post("/api/project/save", jsonData, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    
+      console.log("응답:", response.data);
+      onNext(response.data.project);
+    } catch (error) {
+      console.error('Error creating project:', error);
+      // Here you might want to show an error message to the user
+      throw new Error('Failed to create project');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit_old = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -175,7 +374,8 @@ const NewProjectModal = ({ isOpen, onClose, onNext }) => {
               />
               <label
                 htmlFor="drawing-upload"
-                className="cursor-pointer flex flex-col items-center"
+                className={isDragging ? "cursor-crosshair" : "cursor-pointer flex flex-col items-center"}
+                ref={dragRef}
               >
                 <Upload className="w-8 h-8 text-gray-400 mb-2" />
                 <p className="text-sm text-gray-500">클릭하여 도면 파일을 선택하세요</p>
@@ -203,6 +403,7 @@ const NewProjectModal = ({ isOpen, onClose, onNext }) => {
             </button>
             <button
               type="submit"
+              onClick={handleSubmit}
               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
               disabled={isLoading || !formData.projectName || files.length === 0}
             >

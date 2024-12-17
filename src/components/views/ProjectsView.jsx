@@ -52,13 +52,22 @@ const ProjectsView = () => {
     }
     navigate(`/results/${projectId}`);
   };
-  
+
   const handleNavigateToUnrecognized = (projectId) => {
     if (!projectId) {
       alert('프로젝트를 선택해주세요.');
       return;
     }
     navigate(`/unrecognized/${projectId}`);
+  };
+
+  const handleNavigateToDetail = (projectId) => {
+    debugger;
+    if (!projectId) {
+      alert('프로젝트를 선택해주세요.');
+      return;
+    }
+    navigate(`/projectmanage/${projectId}`);
   };
 
   const handleAddDrawing = (project) => {
@@ -199,6 +208,15 @@ const ProjectsView = () => {
                   <td className="px-6 py-4 text-gray-500">{project.lastUpdated}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex space-x-2 justify-end">
+                      <button 
+                        className="text-purple-600 hover:text-purple-700"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNavigateToDetail(project.id);
+                        }}
+                      >
+                        <Edit2 className="w-5 h-5" />
+                      </button>
                       <button 
                         className="text-purple-600 hover:text-purple-700"
                         onClick={(e) => {

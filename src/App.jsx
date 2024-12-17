@@ -10,6 +10,7 @@ const ProjectsView = React.lazy(() => import('./components/views/ProjectsView'))
 const SymbolsView = React.lazy(() => import('./components/views/SymbolsView'));
 const UnrecognizedView = React.lazy(() => import('./components/views/UnrecognizedView'));
 const ResultsView = React.lazy(() => import('./components/views/ResultsView'));
+const ProjectManagement = React.lazy(() => import('./components/views/ProjectManagement'));
 
 const App = () => {
   const [isMounted, setIsMounted] = useState(false);
@@ -36,6 +37,7 @@ const App = () => {
                 <Route path="/symbols" element={<SymbolsView />} />
                 <Route path="/results/:projectId" element={<ResultsView />} />
                 <Route path="/unrecognized/:projectId" element={<UnrecognizedView />} />
+                <Route path="/projectmanage/:projectId" element={<ProjectManagement />} />
               </Routes>
             </main>
           </div>
