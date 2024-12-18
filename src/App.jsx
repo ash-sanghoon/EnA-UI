@@ -1,16 +1,24 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState, lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import React, { useEffect, useState, lazy, Suspense } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-const Header = React.lazy(() => import('./components/layout/Header'));
-const Sidebar = React.lazy(() => import('./components/layout/Sidebar'));
-const DashboardView = React.lazy(() => import('./components/views/DashboardView'));
-const ProjectsView = React.lazy(() => import('./components/views/ProjectsView'));
-const SymbolsView = React.lazy(() => import('./components/views/SymbolsView'));
-const UnrecognizedView = React.lazy(() => import('./components/views/UnrecognizedView'));
-const ResultsView = React.lazy(() => import('./components/views/ResultsView'));
-const ProjectManagement = React.lazy(() => import('./components/views/ProjectManagement'));
+const Header = React.lazy(() => import("./components/layout/Header"));
+const Sidebar = React.lazy(() => import("./components/layout/Sidebar"));
+const DashboardView = React.lazy(() =>
+  import("./components/views/DashboardView")
+);
+const ProjectsView = React.lazy(() =>
+  import("./components/views/ProjectsView")
+);
+const SymbolsView = React.lazy(() => import("./components/views/SymbolsView"));
+const UnrecognizedView = React.lazy(() =>
+  import("./components/views/UnrecognizedView")
+);
+const ResultsView = React.lazy(() => import("./components/views/ResultsView"));
+const ProjectManagement = React.lazy(() =>
+  import("./components/views/ProjectManagement")
+);
 
 const App = () => {
   const [isMounted, setIsMounted] = useState(false);
@@ -30,14 +38,20 @@ const App = () => {
           <Sidebar />
           <div className="flex-1 flex flex-col overflow-hidden">
             <Header />
-            <main className="flex-1 overflow-auto bg-gray-50">
+            <main className="flex-1 overflow-hidden bg-gray-50">
               <Routes>
                 <Route path="/" element={<DashboardView />} />
                 <Route path="/projects" element={<ProjectsView />} />
                 <Route path="/symbols" element={<SymbolsView />} />
                 <Route path="/results/:projectId" element={<ResultsView />} />
-                <Route path="/unrecognized/:projectId" element={<UnrecognizedView />} />
-                <Route path="/projectmanage/:projectId" element={<ProjectManagement />} />
+                <Route
+                  path="/unrecognized/:projectId"
+                  element={<UnrecognizedView />}
+                />
+                <Route
+                  path="/projectmanage/:projectId"
+                  element={<ProjectManagement />}
+                />
               </Routes>
             </main>
           </div>
