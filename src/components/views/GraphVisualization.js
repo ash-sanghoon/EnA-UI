@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import * as d3 from "d3";
 import data from "./data";
 import LabelSelectorPopup from "../modals/ClassEditModal";
+import axios from 'axios';
 
 const GraphVisualization = ({
   selectTool,
@@ -10,6 +11,7 @@ const GraphVisualization = ({
   selectedEdge,
   setSelectedEdge,
   bright,
+  runId,
 }) => {
   const [graphData, setGraphData] = useState(JSON.parse(JSON.stringify(data)));
   const [selectedNode, setSelectedNode] = useState(null);
@@ -34,6 +36,23 @@ const GraphVisualization = ({
     height: 0,
     scale: 1,
   });
+
+  // 초기 데이터 로드
+  useEffect(() => {
+    fetchProjectDetails();
+  }, []);
+  
+
+  // 도면인식 정보 조회 함수
+  const fetchProjectDetails = async () => {
+    try {
+      const response = await axios.get(`/api/drawing/run_detail/${runId}`);
+      setGraphData(response.data);
+    } catch (error) {
+      console.error("도면인식 정보를 가져오는 중 오류 발생:", error);
+      alert("도면인식 정보를 불러오는 데 실패했습니다.");
+    }
+  };
 
   useEffect(() => {
     if (target && isConnecting) {

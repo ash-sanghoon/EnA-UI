@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import GraphVisualization from "./GraphVisualization.js";
 import { BiShapeSquare } from "react-icons/bi";
+import { useParams } from 'react-router-dom';
 
 const UnrecognizedView = () => {
   const [selectedSymbol, setSelectedSymbol] = useState(false);
@@ -19,6 +20,7 @@ const UnrecognizedView = () => {
   const [bright, setBright] = useState(0.8);
   const [brightnessOpen, setBrightnessOpen] = useState(false);
   const sliderRef = useRef(null);
+  const {runId} = useParams();
 
   // 외부 클릭 감지 핸들러
   useEffect(() => {
@@ -33,6 +35,7 @@ const UnrecognizedView = () => {
     };
   }, []);
 
+  
   return (
     <div className="h-screen flex position-relative">
       {/* 좌측 도구 메뉴 */}
@@ -139,6 +142,7 @@ const UnrecognizedView = () => {
               bright={bright}
               setSelectedEdge={setSelectedEdge}
               selectedEdge={selectedEdge}
+              runId={runId}
             />
           </div>
         </div>
