@@ -45,7 +45,7 @@ const App = () => {
                 <Route path="/symbols" element={<SymbolsView />} />
                 <Route path="/results/:projectId" element={<ResultsView />} />
                 <Route
-                  path="/unrecognized/:projectId"
+                  path="/unrecognized/:runId"
                   element={<UnrecognizedView />}
                 />
                 <Route

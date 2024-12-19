@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import * as d3 from "d3";
 import data from "./data";
 import LabelSelectorPopup from "../modals/ClassEditModal";
+import axios from "axios";
 
 const GraphVisualization = ({
   selectTool,
@@ -12,8 +13,10 @@ const GraphVisualization = ({
   bright,
   nodeOpacity,
   hoverClass,
+  runId,
+  graphData,
+  imgURL,
 }) => {
-  const [graphData, setGraphData] = useState(JSON.parse(JSON.stringify(data)));
   const [selectedNode, setSelectedNode] = useState(null);
   const [isResizing, setIsResizing] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -23,11 +26,10 @@ const GraphVisualization = ({
   const [rectangle, setRectangle] = useState(null);
   const [isLabelPopupOpen, setIsLabelPopupOpen] = useState(false);
   const svgRef = useRef(null);
-  const imageRef = useRef(null);
-  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [startPoint, setStartPoint] = useState({ x: 0, y: 0 });
   const [isCtrlPressed, setIsCtrlPressed] = useState(false);
+  const draggedNodeRef = useRef(null);
   const [viewBox, setViewBox] = useState({
     x: 0,
     y: 0,
@@ -35,6 +37,7 @@ const GraphVisualization = ({
     height: 0,
     scale: 1,
   });
+  const memoizedEdges = useMemo(() => graphData.edges, [graphData.edges]);
 
   useEffect(() => {
     if (target && isConnecting) {
@@ -241,39 +244,25 @@ const GraphVisualization = ({
         const originalWidth = img.naturalWidth;
         const originalHeight = img.naturalHeight;
 
-        const windowWidth = window.innerWidth;
-        const windowHeight = window.innerHeight;
-
-        // 화면 비율에 맞춰 이미지 비율을 조정
-        const widthRatio = windowWidth / originalWidth;
-        const heightRatio = windowHeight / originalHeight;
-        const scale = Math.min(widthRatio, heightRatio, 1); // 1배 이하로만 조정
-
-        const adjustedWidth = originalWidth * scale;
-        const adjustedHeight = originalHeight * scale;
-
-        // height를 줄이기 위해 비율 조정
-        const reducedHeight = adjustedHeight * 0.85; // 20% 줄이기 (원하는 비율로 조정 가능)
-
-        setImageSize({ width: adjustedWidth, height: reducedHeight });
+        // viewBox도 원본 이미지 크기에 맞게 설정
         setViewBox({
-          width: 2988.9929933117746,
-          height: 1992.661995541183,
-          scale: 1.0036825133792067,
-          x: 4.839749444749193,
-          y: 2.0158355665926067,
+          x: 0,
+          y: 0,
+          width: originalWidth,
+          height: originalHeight,
+          scale: 1,
         });
       };
-      img.src = "/images/sample.png";
+      img.src = imgURL;
     };
 
-    updateImageSize(); // 초기화 시 한 번 실행
-    window.addEventListener("resize", updateImageSize); // 화면 크기 변경 시 실행
+    updateImageSize();
+    window.addEventListener("resize", updateImageSize);
 
     return () => {
-      window.removeEventListener("resize", updateImageSize); // 클린업
+      window.removeEventListener("resize", updateImageSize);
     };
-  }, []);
+  }, [imgURL]);
 
   useEffect(() => {
     const svg = d3.select(svgRef.current);
@@ -296,9 +285,7 @@ const GraphVisualization = ({
     // Background image
     backgroundGroup
       .append("image")
-      .attr("href", "/images/sample.png")
-      .attr("width", 3000)
-      .attr("height", 2000)
+      .attr("href", imgURL)
       .attr("opacity", 1)
       .attr("filter", `brightness(${bright})`);
 
@@ -308,13 +295,13 @@ const GraphVisualization = ({
       .on("start", (event, d) => {
         if (!event.active) {
           setIsResizing(true);
-          // selectNode(event, d);
-          setIsLabelPopupOpen(true);
+          draggedNodeRef.current = d;
         }
       })
       .on("end", (event, d) => {
         setIsResizing(false);
-        // 클릭 이벤트 로직 추가 (드래그가 아닌 경우)
+        draggedNodeRef.current = null;
+
         if (
           event.sourceEvent.type === "mouseup" &&
           event.sourceEvent.detail === 1
@@ -324,39 +311,73 @@ const GraphVisualization = ({
         }
       })
       .on("drag", (event, d) => {
+        if (!draggedNodeRef.current) return;
+
         const svg = svgRef.current;
         const point = svg.createSVGPoint();
         point.x = event.sourceEvent.clientX;
         point.y = event.sourceEvent.clientY;
         const svgPoint = point.matrixTransform(svg.getScreenCTM().inverse());
 
-        // 기존 노드의 크기 유지
+        // 노드 크기 계산
         const nodeWidth = d.position[1][0] - d.position[0][0];
         const nodeHeight = d.position[1][1] - d.position[0][1];
 
-        // 이전 노드 중심점 계산
-        const prevCenter = [
-          (d.position[0][0] + d.position[1][0]) / 2,
-          (d.position[0][1] + d.position[1][1]) / 2,
-        ];
-
-        // 새로운 중심점 계산
-        const newCenter = [svgPoint.x, svgPoint.y];
-
-        // 중심점 이동 계산
+        // 새로운 위치 계산
         const newTopLeft = [
-          newCenter[0] - nodeWidth / 2,
-          newCenter[1] - nodeHeight / 2,
+          svgPoint.x - nodeWidth / 2,
+          svgPoint.y - nodeHeight / 2,
         ];
 
-        // 노드 위치 업데이트
-        d.position = [
-          newTopLeft,
-          [newTopLeft[0] + nodeWidth, newTopLeft[1] + nodeHeight],
-        ];
+        // RAF를 사용한 위치 업데이트
+        requestAnimationFrame(() => {
+          if (!draggedNodeRef.current) return;
 
-        // 그래프 다시 그리기
-        setGraphData({ ...graphData });
+          draggedNodeRef.current.position = [
+            newTopLeft,
+            [newTopLeft[0] + nodeWidth, newTopLeft[1] + nodeHeight],
+          ];
+
+          // D3 선택자를 최소화하여 업데이트
+          const nodeGroup = d3.select(svgRef.current).select(".nodes");
+
+          // 드래그 중인 노드만 업데이트
+          nodeGroup
+            .selectAll("rect")
+            .filter((node) => node === draggedNodeRef.current)
+            .attr("x", newTopLeft[0])
+            .attr("y", newTopLeft[1]);
+
+          nodeGroup
+            .selectAll("circle")
+            .filter((node) => node === draggedNodeRef.current)
+            .attr("cx", newTopLeft[0] + nodeWidth / 2)
+            .attr("cy", newTopLeft[1] + nodeHeight / 2);
+
+          nodeGroup
+            .selectAll("text")
+            .filter((node) => node === draggedNodeRef.current)
+            .attr("x", newTopLeft[0] + nodeWidth / 2)
+            .attr("y", newTopLeft[1] + nodeHeight / 2);
+
+          // 연결된 엣지만 업데이트
+          const connectedEdges = memoizedEdges.filter(
+            (edge) => edge.source === d.name || edge.target === d.name
+          );
+
+          const edgeGroup = d3.select(svgRef.current).select(".edges");
+          connectedEdges.forEach((edge) => {
+            const coords = getEdgeCoordinates(edge.source, edge.target);
+            edgeGroup
+              .selectAll(".edge-group")
+              .filter((e) => e === edge)
+              .selectAll("line")
+              .attr("x1", coords.x1)
+              .attr("y1", coords.y1)
+              .attr("x2", coords.x2)
+              .attr("y2", coords.y2);
+          });
+        });
       });
 
     // 크기 조절 핸들 드래그 행동 생성
@@ -1125,31 +1146,8 @@ const GraphVisualization = ({
     };
   });
 
-  useEffect(() => {
-    console.log(graphData.nodes[0].position[0], graphData.nodes[0].position[1]);
-  }, [graphData]);
-
   return (
-    <div className="w-[62vw] h-[85vh] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-      {/* <img
-        ref={imageRef}
-        src="/images/sample.png"
-        style={{ display: "none" }}
-        alt="Background"
-      /> */}
-
-      {/* <button
-        onClick={() => {
-          setIsDrawing(!isDrawing);
-          setIsLabelPopupOpen(false);
-          setSelectedNode(null);
-          setSelectedEdge(null);
-        }}
-        style={{ position: "absolute" }}
-      >
-        {isDrawing ? "Stop Drawing" : "Start Drawing"}
-      </button> */}
-
+    <div className="w-[65vw] h-[88vh] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
       <LabelSelectorPopup
         isOpen={isLabelPopupOpen}
         onClose={() => {
@@ -1190,15 +1188,6 @@ const GraphVisualization = ({
           cursor: isDrawing ? "crosshair" : isPanning ? "grabbing" : "grab",
         }}
       >
-        {/* Image as SVG background */}
-        {/* <image
-          href="/images/sample.png"
-          x="0"
-          y="0"
-          width={imageSize.width}
-          height={imageSize.height}
-        /> */}
-
         {rectangle && (
           <rect
             x={Math.min(rectangle.x1, rectangle.x2)}

@@ -11,6 +11,8 @@ import {
 import GraphVisualization from "./GraphVisualization.js";
 import { BiShapeSquare } from "react-icons/bi";
 import { LuSquareDashed } from "react-icons/lu";
+import { useParams } from "react-router-dom";
+import axios from "axios";
 import data from "./data.js";
 
 const UnrecognizedView = () => {
@@ -25,6 +27,23 @@ const UnrecognizedView = () => {
   const sliderRef = useRef(null);
   const opacitySliderRef = useRef(null);
   const [hoverClass, setHoverClass] = useState(null);
+  const { runId } = useParams();
+  const [graphData, setGraphData] = useState(JSON.parse(JSON.stringify(data)));
+  const [imgURL, setImgURL] = useState(null);
+
+  // 초기 데이터 로드
+  useEffect(() => {
+    fetchProjectDetails();
+  }, [imgURL]);
+
+  // 도면인식 정보 조회 함수
+  const fetchProjectDetails = async () => {
+    try {
+      const response = await axios.get(`/api/drawing/run_detail/${runId}`);
+      setGraphData(response.data);
+      setImgURL(`/api/files/view/${response.data.drawing.uuid}`);
+    } catch (error) {}
+  };
 
   // 외부 클릭 감지 핸들러
   useEffect(() => {
@@ -203,25 +222,40 @@ const UnrecognizedView = () => {
               selectedEdge={selectedEdge}
               nodeOpacity={opacity}
               hoverClass={hoverClass}
+              runId={runId}
+              graphData={graphData}
+              imgURL={imgURL}
             />
           </div>
         </div>
       </div>
 
-      <div className="w-64 border-l border-gray-200 space-y-0 z-50">
+      <div className="w-70 border-l border-gray-200 space-y-0 z-50 overflow-y-auto">
         <h2 className="text-lg font-semibold p-1 border-b border-gray-200">
           클래스 목록
         </h2>
-        <ul className="">
-          {data.nodes.map((node) => (
+        <ul className="max-h-[calc(100vh-10rem)]">
+          {Object.entries(
+            graphData.nodes.reduce((acc, node) => {
+              // '_숫자'를 제거한 이름을 기준으로 그룹화
+              const pureName = node.properties.label.replace(/_\d+$/, "");
+              acc[pureName] = (acc[pureName] || 0) + 1;
+              return acc;
+            }, {})
+          ).map(([name, count]) => (
             <li
-              key={node.name}
+              key={name}
               className="flex items-center justify-between text-sm cursor-pointer hover:bg-gray-200 p-1.5"
-              onMouseOver={() => setHoverClass(node.name)}
+              onMouseOver={() => setHoverClass(name)}
             >
-              <span>{node.properties.label}</span>
+              <span
+                title={name}
+                className="truncate max-w-[calc(100%-3.5rem)]"
+              >
+                {name}
+              </span>
               <span className="bg-purple-400 text-white px-2 rounded-full">
-                {node.properties.data}
+                {count}
               </span>
             </li>
           ))}
