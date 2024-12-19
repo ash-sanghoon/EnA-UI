@@ -11,6 +11,7 @@ import {
 import GraphVisualization from "./GraphVisualization.js";
 import { BiShapeSquare } from "react-icons/bi";
 import { LuSquareDashed } from "react-icons/lu";
+import data from "./data.js";
 
 const UnrecognizedView = () => {
   const [selectedSymbol, setSelectedSymbol] = useState(false);
@@ -23,6 +24,7 @@ const UnrecognizedView = () => {
   const [opacityOpen, setOpacityOpen] = useState(false);
   const sliderRef = useRef(null);
   const opacitySliderRef = useRef(null);
+  const [hoverClass, setHoverClass] = useState(null);
 
   // 외부 클릭 감지 핸들러
   useEffect(() => {
@@ -200,9 +202,30 @@ const UnrecognizedView = () => {
               setSelectedEdge={setSelectedEdge}
               selectedEdge={selectedEdge}
               nodeOpacity={opacity}
+              hoverClass={hoverClass}
             />
           </div>
         </div>
+      </div>
+
+      <div className="w-64 border-l border-gray-200 space-y-0 z-50">
+        <h2 className="text-lg font-semibold p-1 border-b border-gray-200">
+          클래스 목록
+        </h2>
+        <ul className="">
+          {data.nodes.map((node) => (
+            <li
+              key={node.name}
+              className="flex items-center justify-between text-sm cursor-pointer hover:bg-gray-200 p-1.5"
+              onMouseOver={() => setHoverClass(node.name)}
+            >
+              <span>{node.properties.label}</span>
+              <span className="bg-purple-400 text-white px-2 rounded-full">
+                {node.properties.data}
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );

@@ -11,6 +11,7 @@ const GraphVisualization = ({
   setSelectedEdge,
   bright,
   nodeOpacity,
+  hoverClass,
 }) => {
   const [graphData, setGraphData] = useState(JSON.parse(JSON.stringify(data)));
   const [selectedNode, setSelectedNode] = useState(null);
@@ -1123,6 +1124,10 @@ const GraphVisualization = ({
         .on("mouseleave", null);
     };
   });
+
+  useEffect(() => {
+    console.log(graphData.nodes[0].position[0], graphData.nodes[0].position[1]);
+  }, [graphData]);
 
   return (
     <div className="w-[62vw] h-[85vh] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
