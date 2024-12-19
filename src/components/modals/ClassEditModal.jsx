@@ -42,8 +42,8 @@ const LabelSelectorPopup = ({
     if (newLabel && !labelOptions.includes(newLabel)) {
       onLabelSelect(newLabel, selectedNode);
       setSearchTerm("");
-      onClose();
     }
+    onClose();
   };
 
   const handleDeleteLabel = (label) => {

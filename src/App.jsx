@@ -38,7 +38,7 @@ const App = () => {
           <Sidebar />
           <div className="flex-1 flex flex-col overflow-hidden">
             <Header />
-            <main className="flex-1 overflow-hidden bg-gray-50">
+            <main className="flex-1 overflow-auto bg-gray-50">
               <Routes>
                 <Route path="/" element={<DashboardView />} />
                 <Route path="/projects" element={<ProjectsView />} />

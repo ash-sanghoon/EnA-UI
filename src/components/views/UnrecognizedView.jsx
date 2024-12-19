@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import GraphVisualization from "./GraphVisualization.js";
 import { BiShapeSquare } from "react-icons/bi";
+import { LuSquareDashed } from "react-icons/lu";
 
 const UnrecognizedView = () => {
   const [selectedSymbol, setSelectedSymbol] = useState(false);
@@ -17,14 +18,32 @@ const UnrecognizedView = () => {
   const [selectTool, setSelectTool] = useState("hand");
   const [visible, setVisible] = useState(true);
   const [bright, setBright] = useState(0.8);
+  const [opacity, setOpacity] = useState(0.6);
   const [brightnessOpen, setBrightnessOpen] = useState(false);
+  const [opacityOpen, setOpacityOpen] = useState(false);
   const sliderRef = useRef(null);
+  const opacitySliderRef = useRef(null);
 
   // 외부 클릭 감지 핸들러
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (sliderRef.current && !sliderRef.current.contains(event.target)) {
         setBrightnessOpen(false); // 슬라이더 닫기
+      }
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, []);
+  // 외부 클릭 감지 핸들러
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        opacitySliderRef.current &&
+        !opacitySliderRef.current.contains(event.target)
+      ) {
+        setOpacityOpen(false); // 슬라이더 닫기
       }
     };
     document.addEventListener("click", handleClickOutside);
@@ -81,9 +100,17 @@ const UnrecognizedView = () => {
             onClick={(e) => {
               e.stopPropagation(); // 이벤트 전파 방지
               setBrightnessOpen(!brightnessOpen);
+              if (opacityOpen) setOpacityOpen(false);
             }}
           >
-            <Sun className="w-5 h-5" />
+            <Sun
+              className="w-5 h-5"
+              style={{
+                color: `rgb(${255 * (0.5 + bright * 0.5)}, ${
+                  255 * (0.5 + bright * 0.5)
+                }, ${255 * (0.5 + bright * 0.5)})`, // 밝기 조절
+              }}
+            />
           </button>
           {/* 밝기 슬라이더 */}
           {brightnessOpen && (
@@ -100,7 +127,40 @@ const UnrecognizedView = () => {
                 value={bright}
                 onChange={(e) => setBright(parseFloat(e.target.value))}
                 className="w-full h-full transform rotate-180"
-                style={{ writingMode: "vertical-rl" }} // 수직 슬라이더
+                style={{ writingMode: "vertical-rl", cursor: "pointer" }} // 수직 슬라이더
+              />
+            </div>
+          )}
+        </div>
+        <div className="relative">
+          <button
+            className="p-2 text-white hover:bg-purple-700 rounded"
+            onClick={(e) => {
+              e.stopPropagation(); // 이벤트 전파 방지
+              setOpacityOpen(!opacityOpen);
+              if (brightnessOpen) setBrightnessOpen(false);
+            }}
+          >
+            <LuSquareDashed className="w-5 h-5" />
+          </button>
+          {/* 투명도 슬라이더 */}
+          {opacityOpen && (
+            <div
+              ref={opacitySliderRef}
+              className="absolute top-[-50px] left-[60px] bg-white shadow-md p-2 rounded-md"
+              style={{ width: "40px", height: "150px" }}
+            >
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={opacity}
+                onChange={(e) => {
+                  setOpacity(parseFloat(e.target.value));
+                }}
+                className="w-full h-full transform rotate-180"
+                style={{ writingMode: "vertical-rl", cursor: "pointer" }} // 수직 슬라이더
               />
             </div>
           )}
@@ -139,6 +199,7 @@ const UnrecognizedView = () => {
               bright={bright}
               setSelectedEdge={setSelectedEdge}
               selectedEdge={selectedEdge}
+              nodeOpacity={opacity}
             />
           </div>
         </div>
