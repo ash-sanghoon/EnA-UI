@@ -16,7 +16,7 @@ const GraphVisualization = ({
   const [selectedNode, setSelectedNode] = useState(null);
   const [isResizing, setIsResizing] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [isConnecting, setisConnecting] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [target, setTarget] = useState(null);
   const [target2, setTarget2] = useState(null);
   const [rectangle, setRectangle] = useState(null);
@@ -84,8 +84,9 @@ const GraphVisualization = ({
       const finalizeConnection = () => {
         setTarget(null);
         setTarget2(null);
-        setisConnecting(false);
+        setIsConnecting(false);
         setSelectTool(null);
+        setSelectedNode(null);
       };
 
       if (userChoice === null) {
@@ -158,30 +159,77 @@ const GraphVisualization = ({
   const getEdgeCoordinates = (source, target) => {
     const sourceNode = graphData.nodes.find((node) => node.name === source);
     const targetNode = graphData.nodes.find((node) => node.name === target);
-    const sourceRadius = getRadius(sourceNode);
-    const targetRadius = getRadius(targetNode);
 
-    const sourceCenter = getCenter(sourceNode);
-    const targetCenter = getCenter(targetNode);
-
-    const [dx, dy] = [
-      targetCenter[0] - sourceCenter[0],
-      targetCenter[1] - sourceCenter[1],
+    // 소스와 타겟 노드의 중심점 계산
+    const sourceCenter = [
+      (sourceNode.position[0][0] + sourceNode.position[1][0]) / 2,
+      (sourceNode.position[0][1] + sourceNode.position[1][1]) / 2,
     ];
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    const targetCenter = [
+      (targetNode.position[0][0] + targetNode.position[1][0]) / 2,
+      (targetNode.position[0][1] + targetNode.position[1][1]) / 2,
+    ];
 
-    // 거리 비율을 계산하여 선이 노드와 겹치지 않게 함
-    const padding = 4;
-    const targetPaddingAdjustment = 1.5; // 타겟 노드 쪽의 간격을 더 크게 조정
-    const scaleSource = (sourceRadius + padding) / distance;
-    const scaleTarget =
-      (targetRadius + padding * targetPaddingAdjustment) / distance;
+    // 방향 벡터 계산
+    const dx = targetCenter[0] - sourceCenter[0];
+    const dy = targetCenter[1] - sourceCenter[1];
+    const angle = Math.atan2(dy, dx);
+
+    // 소스 노드의 치수
+    const sourceWidth = sourceNode.position[1][0] - sourceNode.position[0][0];
+    const sourceHeight = sourceNode.position[1][1] - sourceNode.position[0][1];
+
+    // 타겟 노드의 치수
+    const targetWidth = targetNode.position[1][0] - targetNode.position[0][0];
+    const targetHeight = targetNode.position[1][1] - targetNode.position[0][1];
+
+    // 교차점 계산 함수
+    const getIntersection = (center, width, height, angle) => {
+      const w2 = width / 2;
+      const h2 = height / 2;
+
+      // 각도에 따른 사분면 확인
+      if (Math.abs(Math.cos(angle)) * h2 > Math.abs(Math.sin(angle)) * w2) {
+        // 수직 경계와 교차
+        const x = w2 * Math.sign(Math.cos(angle));
+        const y = x * Math.tan(angle);
+        return [center[0] + x, center[1] + y];
+      } else {
+        // 수평 경계와 교차
+        const y = h2 * Math.sign(Math.sin(angle));
+        const x = y / Math.tan(angle);
+        return [center[0] + x, center[1] + y];
+      }
+    };
+
+    // 소스와 타겟 노드의 교차점 계산
+    const sourceIntersection = getIntersection(
+      sourceCenter,
+      sourceWidth,
+      sourceHeight,
+      angle
+    );
+    const targetIntersection = getIntersection(
+      targetCenter,
+      targetWidth,
+      targetHeight,
+      angle + Math.PI
+    );
+
+    // 패딩 값 설정
+    const sourcePadding = 5; // 시작점 패딩
+    const targetPadding = 8; // 끝점 패딩 (화살표를 위해 더 큰 값 사용)
+
+    // 방향에 따른 패딩 적용
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const unitX = dx / distance;
+    const unitY = dy / distance;
 
     return {
-      x1: sourceCenter[0] + dx * scaleSource,
-      y1: sourceCenter[1] + dy * scaleSource,
-      x2: targetCenter[0] - dx * scaleTarget,
-      y2: targetCenter[1] - dy * scaleTarget,
+      x1: sourceIntersection[0] + unitX * sourcePadding,
+      y1: sourceIntersection[1] + unitY * sourcePadding,
+      x2: targetIntersection[0] - unitX * targetPadding,
+      y2: targetIntersection[1] - unitY * targetPadding,
     };
   };
 
@@ -239,6 +287,7 @@ const GraphVisualization = ({
         setSelectedNode(null);
         setSelectedEdge(null);
         setSelectedSymbol(false);
+        setTarget(null);
         svg.selectAll(".resize-handle").attr("opacity", 0); // 모든 핸들 숨기기
       }
     });
@@ -639,14 +688,14 @@ const GraphVisualization = ({
       svg
         .selectAll(".node")
         .filter((nodeData) => selectedNode !== d && nodeData !== d) // .node 필터 적용
-        .attr("opacity", nodeOpacity - 0.2)
+        .attr("opacity", nodeOpacity - 0.15);
 
       svg
         .selectAll("circle")
         .filter((circleData) => selectedNode !== d && circleData !== d) // circle 필터 적용
         .attr("opacity", 0.4);
 
-      svg.selectAll(".edge-group").attr("opacity", 0.4);
+      svg.selectAll(".edge-group").attr("opacity", selectedNode ? 1 : 0.4);
 
       svg
         .selectAll(".resize-handle")
@@ -662,14 +711,14 @@ const GraphVisualization = ({
       svg
         .selectAll(".node")
         .filter((nodeData) => selectedNode !== d && nodeData !== d) // .node 필터 적용
-        .attr("opacity", nodeOpacity - 0.2)
+        .attr("opacity", nodeOpacity - 0.15);
 
       svg
         .selectAll("circle")
         .filter((circleData) => selectedNode !== d && circleData !== d) // circle 필터 적용
         .attr("opacity", 0.4);
 
-      svg.selectAll(".edge-group").attr("opacity", 0.4);
+      svg.selectAll(".edge-group").attr("opacity", selectedNode ? 1 : 0.4);
 
       svg
         .selectAll(".resize-handle")
@@ -873,8 +922,8 @@ const GraphVisualization = ({
   };
 
   const handleMouseMove = (event) => {
-    if (isPanning && selectTool !== "drawing" && selectTool !== "connecting") {
-      // 스케일과 무관하게 일정한 드래그 민감도 유지
+    // 기존의 패닝 로직
+    if (isPanning && selectTool !== "drawing") {
       const dx = (event.clientX - startPoint.x) * 1.3;
       const dy = (event.clientY - startPoint.y) * 1.3;
 
@@ -928,7 +977,7 @@ const GraphVisualization = ({
     if (selectTool === "drawing") {
       setIsDrawing(!isDrawing);
       setIsLabelPopupOpen(false);
-      setisConnecting(false);
+      setIsConnecting(false);
       setTarget(null);
       setTarget2(null);
       setSelectedNode(null);
@@ -937,7 +986,7 @@ const GraphVisualization = ({
     }
 
     if (selectTool === "connecting") {
-      setisConnecting(!isConnecting);
+      setIsConnecting(true);
       setSelectedEdge(null);
       setIsDrawing(false);
     }
