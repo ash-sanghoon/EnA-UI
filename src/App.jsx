@@ -44,15 +44,8 @@ const App = () => {
                 <Route path="/projects" element={<ProjectsView />} />
                 <Route path="/symbols" element={<SymbolsView />} />
                 <Route path="/results/:projectId" element={<ResultsView />} />
-                <Route
-                  path="/unrecognized/:drawingId/:runId"
-                  element={<UnrecognizedView />}
-                />
-
-                <Route
-                  path="/projectmanage/:projectId"
-                  element={<ProjectManagement />}
-                />
+                <Route path="/unrecognized/:drawingId/:runId" element={<UnrecognizedView />} />
+                <Route path="/projectmanage/:projectId" element={<ProjectManagement />} />
               </Routes>
             </main>
           </div>

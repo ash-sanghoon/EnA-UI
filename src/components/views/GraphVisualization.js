@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import * as d3 from "d3";
 import LabelSelectorPopup from "../modals/ClassEditModal";
+import axios from 'axios';
 
 const GraphVisualization = ({
   selectTool,
@@ -13,7 +14,7 @@ const GraphVisualization = ({
   hoverClass,
   graphData,
   setGraphData,
-  imgURL,
+  imgURL
 }) => {
   const [selectedNode, setSelectedNode] = useState(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -115,6 +116,23 @@ const GraphVisualization = ({
         .attr("filter", `brightness(${bright})`);
     }
   }, [hoverClass, graphData.nodes, graphData.edges, bright, nodeOpacity]);
+
+  // 초기 데이터 로드
+  useEffect(() => {
+    fetchProjectDetails();
+  }, []);
+  
+
+  // 도면인식 정보 조회 함수
+  const fetchProjectDetails = async () => {
+    try {
+      const response = await axios.get(`/api/drawing/run_detail/${drawingId}/${runId}`);
+      setGraphData(response.data);
+    } catch (error) {
+      console.error("도면인식 정보를 가져오는 중 오류 발생:", error);
+      alert("도면인식 정보를 불러오는 데 실패했습니다.");
+    }
+  };
 
   useEffect(() => {
     if (target && isConnecting) {

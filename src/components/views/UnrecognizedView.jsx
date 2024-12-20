@@ -79,6 +79,7 @@ const UnrecognizedView = () => {
     };
   }, []);
 
+  
   return (
     <div className="h-screen flex position-relative">
       {/* 좌측 도구 메뉴 */}
