@@ -35,10 +35,13 @@ const UnrecognizedView = () => {
   const [imgURL, setImgURL] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const { drawingId, runId } = useParams();
+  const [initialGraphData, setInitialGraphData] = useState(null);
 
   // 패널 리사이징을 위한 상태
   const [rightPanelWidth, setRightPanelWidth] = useState(280);
   const [isResizing, setIsResizing] = useState(false);
+
+  const [updatedGraphData, setUpdatedGraphData] = useState(graphData || {});
 
   // 초기 데이터 로드
   useEffect(() => {
@@ -52,6 +55,7 @@ const UnrecognizedView = () => {
         `/api/drawing/run_detail/${drawingId}/${runId}`
       );
       setGraphData(response.data);
+      setInitialGraphData(JSON.parse(JSON.stringify(response.data)));
       setImgURL(`/api/files/view/${response.data.drawing.drawingUuid}`);
     } catch (error) {
       console.error("데이터 로드 실패:", error);
@@ -121,12 +125,12 @@ const UnrecognizedView = () => {
     setIsResizing(true);
   };
 
-  const handleUndo = () => {
-  };
+  const handleUndo = () => {};
 
   // Redo 버튼 클릭 처리
-  const handleRedo = () => {
-  };
+  const handleRedo = () => {};
+
+  useEffect(() => {}, [graphData]);
 
   return (
     <div className="h-screen flex position-relative">
@@ -134,7 +138,7 @@ const UnrecognizedView = () => {
       <div className="w-16 bg-purple-600 p-4 flex flex-col items-center space-y-4 z-50">
         <button
           className={"p-2 text-white hover:bg-purple-700 rounded"}
-          onClick={() => setSelectTool(selectTool === "save" ? "" : "save")}
+          onClick={() => save()}
         >
           <Save className="w-5 h-5" />
         </button>
@@ -328,6 +332,8 @@ const UnrecognizedView = () => {
               graphData={graphData}
               setGraphData={setGraphData}
               imgURL={imgURL}
+              initialGraphData={initialGraphData}
+              setInitialGraphData={setInitialGraphData}
             />
           </div>
         </div>

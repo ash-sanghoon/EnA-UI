@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import * as d3 from "d3";
 import LabelSelectorPopup from "../modals/ClassEditModal";
+import { v4 as uuidv4 } from "uuid";
+import axios from "axios";
 
 const GraphVisualization = ({
   selectTool,
@@ -27,6 +29,8 @@ const GraphVisualization = ({
   const [isPanning, setIsPanning] = useState(false);
   const [startPoint, setStartPoint] = useState({ x: 0, y: 0 });
   const [isCtrlPressed, setIsCtrlPressed] = useState(false);
+  const [saveData, setSaveData] = useState({ kind: "", name: "", action: "" });
+  const [pendingSaveData, setPendingSaveData] = useState(null);
   const draggedNodeRef = useRef(null);
   const [viewBox, setViewBox] = useState({
     x: 0,
@@ -36,6 +40,35 @@ const GraphVisualization = ({
     scale: 1,
   });
   const memoizedEdges = useMemo(() => graphData.edges, [graphData.edges]);
+
+  useEffect(() => {
+    if (pendingSaveData && !isPanning) {
+      setSaveData(pendingSaveData);
+      setPendingSaveData(null);
+    }
+  }, [pendingSaveData]);
+
+  useEffect(() => {
+    const save = async () => {
+      const requestData = {
+        push: saveData,
+        origin: graphData,
+      };
+      console.log(requestData);
+
+      try {
+        const response = await axios.post(
+          "/api/drawing/run_update",
+          requestData
+        );
+        console.log("Save successful:", response.data);
+      } catch (error) {
+        console.error("Error saving data:", error);
+      }
+    };
+
+    save();
+  }, [saveData]);
 
   useEffect(() => {
     const svg = d3.select(svgRef.current);
@@ -237,8 +270,9 @@ const GraphVisualization = ({
       }
 
       const edgeType = prompt("엣지 속성 입력:");
+      const newName = `edge_${uuidv4()}`;
       const newEdge = {
-        name: `Edge${graphData.edges.length + 1}`,
+        name: newName,
         properties: {
           type: edgeType,
         },
@@ -250,6 +284,8 @@ const GraphVisualization = ({
         ...prev,
         edges: [...prev.edges, newEdge],
       }));
+
+      setPendingSaveData({ kind: "edge", name: newName, action: "add" });
 
       // 상태 초기화
       finalizeConnection();
@@ -430,13 +466,13 @@ const GraphVisualization = ({
         setIsResizing(false);
         draggedNodeRef.current = null;
         dragOffset = null; // 드래그 종료 시 초기화
-
         if (
           event.sourceEvent.type === "mouseup" &&
           event.sourceEvent.detail === 1
         ) {
           selectNode(event, d);
           setIsLabelPopupOpen(true);
+          setPendingSaveData({ kind: "node", name: d.name, action: "upd" });
         }
       })
       .on("drag", (event, d) => {
@@ -530,6 +566,9 @@ const GraphVisualization = ({
       .on("end", (event, d) => {
         selectNode(d);
         setIsResizing(false);
+        if (event.sourceEvent.type === "mouseup") {
+          setPendingSaveData({ kind: "node", name: d.name, action: "upd" });
+        }
       })
       .on("drag", (event, d) => {
         const svg = svgRef.current;
@@ -629,13 +668,6 @@ const GraphVisualization = ({
 
         // 시작 SVG 포인트 업데이트
         d.startSvgPoint = svgPoint;
-      })
-      .on("end", (event, d) => {
-        setIsResizing(false);
-        delete d.startPosition; // 임시 좌표 삭제
-        delete d.minReachedPositionX; // x축 최소 크기 좌표 삭제
-        delete d.minReachedPositionY; // y축 최소 크기 좌표 삭제
-        delete d.startSvgPoint; // 시작 SVG 포인트 삭제
       });
 
     // 화살표 그리기
@@ -858,8 +890,10 @@ const GraphVisualization = ({
         .filter((data) => data === d) // 현재 호버된 데이터와 일치하는 노드, 서클 선택
         .attr("opacity", 0.8);
 
-      svg.selectAll("text")
-      .filter((data) => data === d).attr("opacity", 1);
+      svg
+        .selectAll("text")
+        .filter((data) => data === d)
+        .attr("opacity", 1);
     });
 
     circleNodes.on("mouseenter", function (event, d) {
@@ -890,8 +924,10 @@ const GraphVisualization = ({
         .filter((data) => data === d) // 현재 호버된 데이터와 일치하는 노드, 서클 선택
         .attr("opacity", 0.8);
 
-      svg.selectAll("text")
-      .filter((data) => data === d).attr("opacity", 1);
+      svg
+        .selectAll("text")
+        .filter((data) => data === d)
+        .attr("opacity", 1);
     });
 
     rectangleNodes.on("mouseleave", function (event, d) {
@@ -993,17 +1029,20 @@ const GraphVisualization = ({
 
   const handleLabelSelect = (label, selectedNode) => {
     if (selectedNode) {
-      // selectedNode가 있을 경우 label만 변경
       setGraphData((prev) => ({
         ...prev,
         nodes: prev.nodes.map((node) =>
-          node.name === selectedNode.name
-            ? { ...node, properties: { label } } // label만 업데이트
+          node.properties.label === selectedNode.properties.label
+            ? { ...node, properties: { label } }
             : node
         ),
       }));
+      setPendingSaveData({
+        kind: "node",
+        name: selectedNode.properties.label,
+        action: "upd",
+      });
     } else {
-      // selectedNode가 없으면 새로운 노드를 추가
       const topLeft = [
         Math.min(rectangle.x1, rectangle.x2),
         Math.min(rectangle.y1, rectangle.y2),
@@ -1013,8 +1052,9 @@ const GraphVisualization = ({
         Math.max(rectangle.y1, rectangle.y2),
       ];
 
+      const newNodeName = `${label}_${uuidv4()}`;
       const newNode = {
-        name: `node${graphData.nodes.length + 1}`,
+        name: newNodeName,
         position: [topLeft, bottomRight],
         properties: { label },
       };
@@ -1023,8 +1063,8 @@ const GraphVisualization = ({
         ...prev,
         nodes: [...prev.nodes, newNode],
       }));
+      setPendingSaveData({ kind: "node", name: newNodeName, action: "add" });
     }
-
     setRectangle(null);
     setIsDrawing(false);
   };
@@ -1051,11 +1091,19 @@ const GraphVisualization = ({
             edge.target !== selectedNode.name
         );
 
-        setGraphData((prevData) => ({
-          ...prevData,
-          nodes: updatedNodes,
-          edges: updatedEdges,
-        }));
+        setPendingSaveData({
+          kind: "node",
+          name: selectedNode.name,
+          action: "del",
+        });
+
+        setTimeout(() => {
+          setGraphData((prevData) => ({
+            ...prevData,
+            nodes: updatedNodes,
+            edges: updatedEdges,
+          }));
+        }, 100);
         setSelectedNode(null);
       }
     }
@@ -1082,10 +1130,19 @@ const GraphVisualization = ({
               edge.target === selectedEdge.target
             )
         );
-        setGraphData((prevData) => ({
-          ...prevData,
-          edges: updatedEdges,
-        }));
+        setPendingSaveData({
+          kind: "edge",
+          name: selectedEdge.name,
+          action: "del",
+        });
+
+        setTimeout(() => {
+          setGraphData((prevData) => ({
+            ...prevData,
+            edges: updatedEdges,
+          }));
+        }, 100);
+
         setSelectedEdge(null);
         setSelectedNode(null);
         setSelectedSymbol(false);
