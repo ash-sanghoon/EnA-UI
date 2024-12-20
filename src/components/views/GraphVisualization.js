@@ -41,13 +41,13 @@ const GraphVisualization = ({
     const svg = d3.select(svgRef.current);
 
     if (hoverClass !== null) {
-      // Find nodes that match the hoverClass
+      // hoverClass와 일치하는 노드 찾기
       const matchingNodes = graphData.nodes.filter(
         (node) => node.properties.label === hoverClass
       );
       const matchingNodeNames = matchingNodes.map((node) => node.name);
 
-      // Update nodes
+      // 노드 투명도 업데이트
       svg
         .selectAll(".node")
         .transition()
@@ -56,23 +56,23 @@ const GraphVisualization = ({
           matchingNodeNames.includes(d.name) ? nodeOpacity : 0.2
         );
 
-      // Update circles
+      // 원 투명도 업데이트
       svg
         .selectAll("circle")
         .transition()
         .duration(150)
         .attr("opacity", (d) => (matchingNodeNames.includes(d.name) ? 1 : 0.2));
 
-      // Update text
+      // 노드 텍스트 레이블 투명도 업데이트 (hover-label 제외)
       svg
-        .selectAll("text")
+        .selectAll("text:not(.hover-label)")
         .transition()
         .duration(150)
         .style("opacity", (d) =>
           matchingNodeNames.includes(d.name) ? 1 : 0.2
         );
 
-      // Update edges
+      // 엣지 투명도 업데이트
       svg
         .selectAll(".edge-group")
         .transition()
@@ -84,14 +84,36 @@ const GraphVisualization = ({
             : 0.2
         );
 
-      // Update background image brightness
+      // 배경 이미지 밝기 조정
       svg
         .select(".background image")
         .transition()
         .duration(150)
         .attr("filter", "brightness(0.3)");
+
+      // 기존 hover 레이블 제거
+      svg.selectAll(".hover-label").remove();
+
+      // 일치하는 노드에 클래스 레이블 추가
+      matchingNodes.forEach((node) => {
+        const topRight = [node.position[0][0], node.position[0][1]];
+
+        // 텍스트 레이블 추가
+        svg
+          .append("text")
+          .attr("class", "hover-label")
+          .attr("x", topRight[0])
+          .attr("y", topRight[1] - 15)
+          .attr("text-anchor", "start")
+          .attr("dominant-baseline", "baseline")
+          .attr("fill", "white")
+          .attr("font-weight", "bold")
+          .attr("font-size", `${Math.min(55, 55 / viewBox.scale)}px`)
+          .attr("pointer-events", "none")
+          .text(hoverClass);
+      });
     } else {
-      // Reset all elements to their original state
+      // hover 상태가 없을 때 모든 요소를 원래 상태로 복원
       svg
         .selectAll(".node")
         .transition()
@@ -100,7 +122,11 @@ const GraphVisualization = ({
 
       svg.selectAll("circle").transition().duration(150).attr("opacity", 1);
 
-      svg.selectAll("text").transition().duration(150).style("opacity", 1);
+      svg
+        .selectAll("text:not(.hover-label)")
+        .transition()
+        .duration(150)
+        .style("opacity", 1);
 
       svg
         .selectAll(".edge-group")
@@ -113,8 +139,18 @@ const GraphVisualization = ({
         .transition()
         .duration(150)
         .attr("filter", `brightness(${bright})`);
+
+      // hover 레이블 및 관련 요소 제거
+      svg.selectAll(".hover-label, .hover-label-bg").remove();
     }
-  }, [hoverClass, graphData.nodes, graphData.edges, bright, nodeOpacity]);
+  }, [
+    hoverClass,
+    graphData.nodes,
+    graphData.edges,
+    bright,
+    nodeOpacity,
+    viewBox.scale,
+  ]);
 
   useEffect(() => {
     if (target && isConnecting) {
@@ -800,14 +836,9 @@ const GraphVisualization = ({
       }
 
       svg
-        .selectAll(".node")
+        .selectAll(".node, circle, text")
         .filter((nodeData) => selectedNode !== d && nodeData !== d) // .node 필터 적용
         .attr("opacity", 0.2);
-
-      svg
-        .selectAll("circle")
-        .filter((circleData) => selectedNode !== d && circleData !== d) // circle 필터 적용
-        .attr("opacity", 0.4);
 
       svg.selectAll(".edge-group").attr("opacity", selectedNode ? 1 : 0.4);
 
@@ -826,6 +857,9 @@ const GraphVisualization = ({
         .selectAll(".node, circle")
         .filter((data) => data === d) // 현재 호버된 데이터와 일치하는 노드, 서클 선택
         .attr("opacity", 0.8);
+
+      svg.selectAll("text")
+      .filter((data) => data === d).attr("opacity", 1);
     });
 
     circleNodes.on("mouseenter", function (event, d) {
@@ -834,14 +868,9 @@ const GraphVisualization = ({
       }
 
       svg
-        .selectAll(".node")
+        .selectAll(".node, circle, text")
         .filter((nodeData) => selectedNode !== d && nodeData !== d) // .node 필터 적용
         .attr("opacity", 0.2);
-
-      svg
-        .selectAll("circle")
-        .filter((circleData) => selectedNode !== d && circleData !== d) // circle 필터 적용
-        .attr("opacity", 0.4);
 
       svg.selectAll(".edge-group").attr("opacity", selectedNode ? 1 : 0.4);
 
@@ -860,12 +889,15 @@ const GraphVisualization = ({
         .selectAll(".node, circle")
         .filter((data) => data === d) // 현재 호버된 데이터와 일치하는 노드, 서클 선택
         .attr("opacity", 0.8);
+
+      svg.selectAll("text")
+      .filter((data) => data === d).attr("opacity", 1);
     });
 
     rectangleNodes.on("mouseleave", function (event, d) {
       if (!selectedNode || selectedNode !== d || isResizing) {
         svg.selectAll(".node").attr("opacity", nodeOpacity); // node는 변수 사용
-        svg.selectAll(".circle, circle, .edge-group").attr("opacity", 1); // 다른 요소는 직접 값 설정
+        svg.selectAll(".circle, circle, .edge-group, text").attr("opacity", 1); // 다른 요소는 직접 값 설정
         svg
           .selectAll(".resize-handle")
           .filter((handle) => handle.nodeIndex === graphData.nodes.indexOf(d))
@@ -882,7 +914,7 @@ const GraphVisualization = ({
     circleNodes.on("mouseleave", function (event, d) {
       if (!selectedNode || selectedNode !== d || isResizing) {
         svg.selectAll(".node").attr("opacity", nodeOpacity); // node는 변수 사용
-        svg.selectAll(".circle, circle, .edge-group").attr("opacity", 1); // 다른 요소는 직접 값 설정
+        svg.selectAll(".circle, circle, .edge-group, text").attr("opacity", 1); // 다른 요소는 직접 값 설정
         svg
           .selectAll(".resize-handle")
           .filter((handle) => handle.nodeIndex === graphData.nodes.indexOf(d))
@@ -1311,7 +1343,13 @@ const GraphVisualization = ({
         }}
         onWheel={handleWheel}
         style={{
-          cursor: isDrawing ? "crosshair" : isPanning ? "grabbing" : "grab",
+          cursor: isDrawing
+            ? "crosshair"
+            : isPanning
+            ? "grabbing"
+            : isConnecting
+            ? "pointer"
+            : "grab",
         }}
       >
         {rectangle && (

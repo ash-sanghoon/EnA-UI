@@ -33,7 +33,7 @@ const UnrecognizedView = () => {
   const [hoverClass, setHoverClass] = useState(null);
   const [graphData, setGraphData] = useState(JSON.parse(JSON.stringify(data)));
   const [imgURL, setImgURL] = useState(null);
-  const [isSaving, setIsSaving] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const { drawingId, runId } = useParams();
 
   // 패널 리사이징을 위한 상태
