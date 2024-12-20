@@ -25,7 +25,7 @@ const UnrecognizedView = () => {
   const [selectTool, setSelectTool] = useState("hand");
   const [visible, setVisible] = useState(true);
   const [bright, setBright] = useState(0.8);
-  const [opacity, setOpacity] = useState(0.6);
+  const [opacity, setOpacity] = useState(0.7);
   const [brightnessOpen, setBrightnessOpen] = useState(false);
   const [opacityOpen, setOpacityOpen] = useState(false);
   const sliderRef = useRef(null);

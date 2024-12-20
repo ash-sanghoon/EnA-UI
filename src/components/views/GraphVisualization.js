@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import * as d3 from "d3";
 import LabelSelectorPopup from "../modals/ClassEditModal";
-import axios from "axios";
 
 const GraphVisualization = ({
   selectTool,
@@ -90,7 +89,7 @@ const GraphVisualization = ({
         .select(".background image")
         .transition()
         .duration(150)
-        .attr("filter", "brightness(0.5)");
+        .attr("filter", "brightness(0.3)");
     } else {
       // Reset all elements to their original state
       svg
@@ -368,17 +367,33 @@ const GraphVisualization = ({
       .attr("filter", `brightness(${bright})`);
 
     // 노드 이동 드래그 행동 생성
+    let dragOffset = null; // 드래그 시작 시 노드와 마우스 간의 오프셋
+
     const nodeDrag = d3
       .drag()
       .on("start", (event, d) => {
         if (!event.active) {
           setIsResizing(true);
           draggedNodeRef.current = d;
+
+          // 드래그 시작 시 마우스 위치와 노드의 상단 좌표 차이를 계산
+          const svg = svgRef.current;
+          const point = svg.createSVGPoint();
+          point.x = event.sourceEvent.clientX;
+          point.y = event.sourceEvent.clientY;
+          const svgPoint = point.matrixTransform(svg.getScreenCTM().inverse());
+
+          const nodeTopLeft = d.position[0]; // 노드의 좌상단 좌표
+          dragOffset = [
+            svgPoint.x - nodeTopLeft[0],
+            svgPoint.y - nodeTopLeft[1],
+          ];
         }
       })
       .on("end", (event, d) => {
         setIsResizing(false);
         draggedNodeRef.current = null;
+        dragOffset = null; // 드래그 종료 시 초기화
 
         if (
           event.sourceEvent.type === "mouseup" &&
@@ -389,7 +404,7 @@ const GraphVisualization = ({
         }
       })
       .on("drag", (event, d) => {
-        if (!draggedNodeRef.current) return;
+        if (!draggedNodeRef.current || !dragOffset) return;
 
         const svg = svgRef.current;
         const point = svg.createSVGPoint();
@@ -397,15 +412,15 @@ const GraphVisualization = ({
         point.y = event.sourceEvent.clientY;
         const svgPoint = point.matrixTransform(svg.getScreenCTM().inverse());
 
+        // 드래그 중 새 좌상단 좌표 계산
+        const newTopLeft = [
+          svgPoint.x - dragOffset[0],
+          svgPoint.y - dragOffset[1],
+        ];
+
         // 노드 크기 계산
         const nodeWidth = d.position[1][0] - d.position[0][0];
         const nodeHeight = d.position[1][1] - d.position[0][1];
-
-        // 새로운 위치 계산
-        const newTopLeft = [
-          svgPoint.x - nodeWidth / 2,
-          svgPoint.y - nodeHeight / 2,
-        ];
 
         // RAF를 사용한 위치 업데이트
         requestAnimationFrame(() => {
@@ -419,7 +434,6 @@ const GraphVisualization = ({
           // D3 선택자를 최소화하여 업데이트
           const nodeGroup = d3.select(svgRef.current).select(".nodes");
 
-          // 드래그 중인 노드만 업데이트
           nodeGroup
             .selectAll("rect")
             .filter((node) => node === draggedNodeRef.current)
@@ -802,18 +816,16 @@ const GraphVisualization = ({
         .filter((handle) => handle.nodeIndex === graphData.nodes.indexOf(d))
         .attr("opacity", 1);
 
-      if (!selectedNode) {
-        svg
-          .select(".background image")
-          .transition()
-          .duration(150)
-          .attr("filter", "brightness(0.5)");
+      svg
+        .select(".background image")
+        .transition()
+        .duration(150)
+        .attr("filter", "brightness(0.3)");
 
-        svg
-          .selectAll(".node, circle")
-          .filter((data) => data === d) // 현재 호버된 데이터와 일치하는 노드, 서클 선택
-          .attr("opacity", 0.8);
-      }
+      svg
+        .selectAll(".node, circle")
+        .filter((data) => data === d) // 현재 호버된 데이터와 일치하는 노드, 서클 선택
+        .attr("opacity", 0.8);
     });
 
     circleNodes.on("mouseenter", function (event, d) {
@@ -838,18 +850,16 @@ const GraphVisualization = ({
         .filter((handle) => handle.nodeIndex === graphData.nodes.indexOf(d))
         .attr("opacity", 1);
 
-      if (!selectedNode) {
-        svg
-          .select(".background image")
-          .transition()
-          .duration(150)
-          .attr("filter", "brightness(0.5)");
+      svg
+        .select(".background image")
+        .transition()
+        .duration(150)
+        .attr("filter", "brightness(0.3)");
 
-        svg
-          .selectAll(".node, circle")
-          .filter((data) => data === d) // 현재 호버된 데이터와 일치하는 노드, 서클 선택
-          .attr("opacity", 0.8);
-      }
+      svg
+        .selectAll(".node, circle")
+        .filter((data) => data === d) // 현재 호버된 데이터와 일치하는 노드, 서클 선택
+        .attr("opacity", 0.8);
     });
 
     rectangleNodes.on("mouseleave", function (event, d) {
