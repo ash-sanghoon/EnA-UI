@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import * as d3 from "d3";
-import data from "./data";
 import LabelSelectorPopup from "../modals/ClassEditModal";
-import axios from "axios";
 
 const GraphVisualization = ({
   selectTool,
@@ -13,8 +11,8 @@ const GraphVisualization = ({
   bright,
   nodeOpacity,
   hoverClass,
-  runId,
   graphData,
+  setGraphData,
   imgURL,
 }) => {
   const [selectedNode, setSelectedNode] = useState(null);
@@ -38,6 +36,85 @@ const GraphVisualization = ({
     scale: 1,
   });
   const memoizedEdges = useMemo(() => graphData.edges, [graphData.edges]);
+
+  useEffect(() => {
+    const svg = d3.select(svgRef.current);
+
+    if (hoverClass !== null) {
+      // Find nodes that match the hoverClass
+      const matchingNodes = graphData.nodes.filter(
+        (node) => node.properties.label === hoverClass
+      );
+      const matchingNodeNames = matchingNodes.map((node) => node.name);
+
+      // Update nodes
+      svg
+        .selectAll(".node")
+        .transition()
+        .duration(150)
+        .attr("opacity", (d) =>
+          matchingNodeNames.includes(d.name) ? nodeOpacity : 0.2
+        );
+
+      // Update circles
+      svg
+        .selectAll("circle")
+        .transition()
+        .duration(150)
+        .attr("opacity", (d) => (matchingNodeNames.includes(d.name) ? 1 : 0.2));
+
+      // Update text
+      svg
+        .selectAll("text")
+        .transition()
+        .duration(150)
+        .style("opacity", (d) =>
+          matchingNodeNames.includes(d.name) ? 1 : 0.2
+        );
+
+      // Update edges
+      svg
+        .selectAll(".edge-group")
+        .transition()
+        .duration(150)
+        .style("opacity", (d) =>
+          matchingNodeNames.includes(d.source) ||
+          matchingNodeNames.includes(d.target)
+            ? 1
+            : 0.2
+        );
+
+      // Update background image brightness
+      svg
+        .select(".background image")
+        .transition()
+        .duration(150)
+        .attr("filter", "brightness(0.5)");
+    } else {
+      // Reset all elements to their original state
+      svg
+        .selectAll(".node")
+        .transition()
+        .duration(150)
+        .attr("opacity", nodeOpacity);
+
+      svg.selectAll("circle").transition().duration(150).attr("opacity", 1);
+
+      svg.selectAll("text").transition().duration(150).style("opacity", 1);
+
+      svg
+        .selectAll(".edge-group")
+        .transition()
+        .duration(150)
+        .style("opacity", 1);
+
+      svg
+        .select(".background image")
+        .transition()
+        .duration(150)
+        .attr("filter", `brightness(${bright})`);
+    }
+  }, [hoverClass, graphData.nodes, graphData.edges, bright, nodeOpacity]);
 
   useEffect(() => {
     if (target && isConnecting) {
@@ -631,7 +708,7 @@ const GraphVisualization = ({
       .call(nodeDrag);
 
     // 크기 조절 핸들 추가
-    const handleSize = 10;
+    const handleSize = 15 / viewBox.scale;
     // eslint-disable-next-line
     const cornerHandles = nodeGroup
       .selectAll(".resize-handle")
@@ -710,7 +787,7 @@ const GraphVisualization = ({
       svg
         .selectAll(".node")
         .filter((nodeData) => selectedNode !== d && nodeData !== d) // .node 필터 적용
-        .attr("opacity", nodeOpacity - 0.15);
+        .attr("opacity", 0.2);
 
       svg
         .selectAll("circle")
@@ -723,6 +800,19 @@ const GraphVisualization = ({
         .selectAll(".resize-handle")
         .filter((handle) => handle.nodeIndex === graphData.nodes.indexOf(d))
         .attr("opacity", 1);
+
+      if (!selectedNode) {
+        svg
+          .select(".background image")
+          .transition()
+          .duration(150)
+          .attr("filter", "brightness(0.5)");
+
+        svg
+          .selectAll(".node, circle")
+          .filter((data) => data === d) // 현재 호버된 데이터와 일치하는 노드, 서클 선택
+          .attr("opacity", 0.8);
+      }
     });
 
     circleNodes.on("mouseenter", function (event, d) {
@@ -733,7 +823,7 @@ const GraphVisualization = ({
       svg
         .selectAll(".node")
         .filter((nodeData) => selectedNode !== d && nodeData !== d) // .node 필터 적용
-        .attr("opacity", nodeOpacity - 0.15);
+        .attr("opacity", 0.2);
 
       svg
         .selectAll("circle")
@@ -746,6 +836,19 @@ const GraphVisualization = ({
         .selectAll(".resize-handle")
         .filter((handle) => handle.nodeIndex === graphData.nodes.indexOf(d))
         .attr("opacity", 1);
+
+      if (!selectedNode) {
+        svg
+          .select(".background image")
+          .transition()
+          .duration(150)
+          .attr("filter", "brightness(0.5)");
+
+        svg
+          .selectAll(".node, circle")
+          .filter((data) => data === d) // 현재 호버된 데이터와 일치하는 노드, 서클 선택
+          .attr("opacity", 0.8);
+      }
     });
 
     rectangleNodes.on("mouseleave", function (event, d) {
@@ -756,6 +859,12 @@ const GraphVisualization = ({
           .selectAll(".resize-handle")
           .filter((handle) => handle.nodeIndex === graphData.nodes.indexOf(d))
           .attr("opacity", 0); // 숨김 상태는 0으로 설정
+
+        svg
+          .select(".background image")
+          .transition()
+          .duration(150)
+          .attr("filter", `brightness(${bright})`);
       }
     });
 
@@ -767,6 +876,12 @@ const GraphVisualization = ({
           .selectAll(".resize-handle")
           .filter((handle) => handle.nodeIndex === graphData.nodes.indexOf(d))
           .attr("opacity", 0); // 숨김 상태는 0으로 설정
+
+        svg
+          .select(".background image")
+          .transition()
+          .duration(150)
+          .attr("filter", `brightness(${bright})`);
       }
     });
 
@@ -788,7 +903,7 @@ const GraphVisualization = ({
           .attr("opacity", 0);
       }
     });
-  }, [graphData, isResizing, selectedNode, bright, nodeOpacity]);
+  }, [graphData, isResizing, selectedNode, bright, nodeOpacity,viewBox.scale]);
 
   const startDrawing = (e) => {
     if (!isDrawing) return;
@@ -1067,7 +1182,7 @@ const GraphVisualization = ({
         .selectAll(".resize-handle")
         .transition()
         .duration(150)
-        .style("opacity", 1)
+        .style("opacity", 0)
         .style("pointer-events", "auto");
       svg
         .selectAll("text")
@@ -1110,7 +1225,7 @@ const GraphVisualization = ({
         const currentEdge = d3.select(this).select(".edge");
 
         // 모든 엣지 투명도 낮추기
-        svg.selectAll(".edge-group .edge").attr("opacity", 0.4);
+        svg.selectAll(".edge-group .edge").attr("opacity", 0.3);
 
         // 호버된 엣지의 스타일 복원
         currentEdge.attr("opacity", 1).attr("stroke-width", 4);
