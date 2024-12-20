@@ -20,7 +20,7 @@ const UnrecognizedView = () => {
   const [bright, setBright] = useState(0.8);
   const [brightnessOpen, setBrightnessOpen] = useState(false);
   const sliderRef = useRef(null);
-  const {runId} = useParams();
+  const {drawingId, runId} = useParams();
 
   // 외부 클릭 감지 핸들러
   useEffect(() => {
@@ -143,6 +143,7 @@ const UnrecognizedView = () => {
               setSelectedEdge={setSelectedEdge}
               selectedEdge={selectedEdge}
               runId={runId}
+              drawingId={drawingId}
             />
           </div>
         </div>

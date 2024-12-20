@@ -12,6 +12,7 @@ const GraphVisualization = ({
   setSelectedEdge,
   bright,
   runId,
+  drawingId,
 }) => {
   const [graphData, setGraphData] = useState(JSON.parse(JSON.stringify(data)));
   const [selectedNode, setSelectedNode] = useState(null);
@@ -46,7 +47,7 @@ const GraphVisualization = ({
   // 도면인식 정보 조회 함수
   const fetchProjectDetails = async () => {
     try {
-      const response = await axios.get(`/api/drawing/run_detail/${runId}`);
+      const response = await axios.get(`/api/drawing/run_detail/${drawingId}/${runId}`);
       setGraphData(response.data);
     } catch (error) {
       console.error("도면인식 정보를 가져오는 중 오류 발생:", error);

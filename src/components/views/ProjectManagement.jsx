@@ -51,11 +51,11 @@ const ProjectManagement = () => {
   };
 
   const handleDrawingClick = (drawing) => {
-    navigate(`/unrecognized/0`); // run 분석 없는 이미지 활용?
+    navigate(`/unrecognized/${drawing.uuid}/0`); // run 분석 없는 이미지 활용?
   };
 
   const handleDrawingRunClick = (drawing, run) => {
-    navigate(`/unrecognized/${run.uuid}`);
+    navigate(`/unrecognized/${drawing.uuid}/${run.uuid}`);
   };
 
   // Handle run click
