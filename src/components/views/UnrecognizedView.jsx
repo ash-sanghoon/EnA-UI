@@ -19,6 +19,7 @@ import axios from "axios";
 import data from "./data.js";
 
 const UnrecognizedView = () => {
+  // 기본 상태 관리
   const [selectedSymbol, setSelectedSymbol] = useState(false);
   const [selectedEdge, setSelectedEdge] = useState(null);
   const [selectTool, setSelectTool] = useState("hand");
@@ -32,8 +33,12 @@ const UnrecognizedView = () => {
   const [hoverClass, setHoverClass] = useState(null);
   const [graphData, setGraphData] = useState(JSON.parse(JSON.stringify(data)));
   const [imgURL, setImgURL] = useState(null);
-  const [isSaving, setIsSaving] = useState(true); //임시로 보이는 상태
+  const [isSaving, setIsSaving] = useState(true);
   const { drawingId, runId } = useParams();
+
+  // 패널 리사이징을 위한 상태
+  const [rightPanelWidth, setRightPanelWidth] = useState(280);
+  const [isResizing, setIsResizing] = useState(false);
 
   // 초기 데이터 로드
   useEffect(() => {
@@ -48,14 +53,16 @@ const UnrecognizedView = () => {
       );
       setGraphData(response.data);
       setImgURL(`/api/files/view/${response.data.drawing.drawingUuid}`);
-    } catch (error) {}
+    } catch (error) {
+      console.error("데이터 로드 실패:", error);
+    }
   };
 
-  // 외부 클릭 감지 핸들러
+  // 밝기 슬라이더 외부 클릭 감지
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (sliderRef.current && !sliderRef.current.contains(event.target)) {
-        setBrightnessOpen(false); // 슬라이더 닫기
+        setBrightnessOpen(false);
       }
     };
     document.addEventListener("click", handleClickOutside);
@@ -63,14 +70,15 @@ const UnrecognizedView = () => {
       document.removeEventListener("click", handleClickOutside);
     };
   }, []);
-  // 외부 클릭 감지 핸들러
+
+  // 투명도 슬라이더 외부 클릭 감지
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
         opacitySliderRef.current &&
         !opacitySliderRef.current.contains(event.target)
       ) {
-        setOpacityOpen(false); // 슬라이더 닫기
+        setOpacityOpen(false);
       }
     };
     document.addEventListener("click", handleClickOutside);
@@ -79,7 +87,40 @@ const UnrecognizedView = () => {
     };
   }, []);
 
-  
+  // 패널 리사이징 이벤트 핸들러
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing) return;
+
+      // 최소 200px, 최대 600px로 제한
+      const newWidth = Math.min(
+        Math.max(window.innerWidth - e.clientX, 150),
+        600
+      );
+
+      setRightPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
+
+  // 패널 리사이징 시작 핸들러
+  const startResizing = () => {
+    setIsResizing(true);
+  };
+
   return (
     <div className="h-screen flex position-relative">
       {/* 좌측 도구 메뉴 */}
@@ -126,7 +167,7 @@ const UnrecognizedView = () => {
           <button
             className="p-2 text-white hover:bg-purple-700 rounded"
             onClick={(e) => {
-              e.stopPropagation(); // 이벤트 전파 방지
+              e.stopPropagation();
               setBrightnessOpen(!brightnessOpen);
               if (opacityOpen) setOpacityOpen(false);
             }}
@@ -136,7 +177,7 @@ const UnrecognizedView = () => {
               style={{
                 color: `rgb(${255 * (0.5 + bright * 0.5)}, ${
                   255 * (0.5 + bright * 0.5)
-                }, ${255 * (0.5 + bright * 0.5)})`, // 밝기 조절
+                }, ${255 * (0.5 + bright * 0.5)})`,
               }}
             />
           </button>
@@ -155,7 +196,7 @@ const UnrecognizedView = () => {
                 value={bright}
                 onChange={(e) => setBright(parseFloat(e.target.value))}
                 className="w-full h-full transform rotate-180"
-                style={{ writingMode: "vertical-rl", cursor: "pointer" }} // 수직 슬라이더
+                style={{ writingMode: "vertical-rl", cursor: "pointer" }}
               />
             </div>
           )}
@@ -164,7 +205,7 @@ const UnrecognizedView = () => {
           <button
             className="p-2 text-white hover:bg-purple-700 rounded"
             onClick={(e) => {
-              e.stopPropagation(); // 이벤트 전파 방지
+              e.stopPropagation();
               setOpacityOpen(!opacityOpen);
               if (brightnessOpen) setBrightnessOpen(false);
             }}
@@ -188,7 +229,7 @@ const UnrecognizedView = () => {
                   setOpacity(parseFloat(e.target.value));
                 }}
                 className="w-full h-full transform rotate-180"
-                style={{ writingMode: "vertical-rl", cursor: "pointer" }} // 수직 슬라이더
+                style={{ writingMode: "vertical-rl", cursor: "pointer" }}
               />
             </div>
           )}
@@ -227,9 +268,9 @@ const UnrecognizedView = () => {
             <h1 className="text-2xl font-semibold">미인식 개체 태깅</h1>
 
             {/* 저장 로딩 아이콘 영역 */}
-            {isSaving && ( // 저장 중일 때만 표시
+            {isSaving && (
               <>
-                <div className="fixed top-[85px] left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2">
+                <div className="absolute top-[-20px] right-[-15px] flex items-center gap-2 px-4 py-2">
                   <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
                   <span className="text-sm text-gray-600">저장 중...</span>
                 </div>
@@ -259,7 +300,21 @@ const UnrecognizedView = () => {
         </div>
       </div>
 
-      <div className="w-70 border-l border-gray-200 space-y-0 z-50 overflow-y-auto">
+      {/* 리사이징 가능한 오른쪽 패널 */}
+      <div
+        style={{
+          width: `${rightPanelWidth}px`,
+          position: "relative",
+        }}
+        className="border-l border-gray-200 space-y-0 z-50 overflow-y-auto"
+      >
+        {/* 리사이징 핸들 */}
+        <div
+          className="absolute left-0 top-0 w-1 h-full cursor-ew-resize hover:bg-purple-400 transition-colors"
+          style={{ transform: "translateX(-50%)" }}
+          onMouseDown={startResizing}
+        />
+
         <h2 className="text-lg font-semibold p-1 border-b border-gray-200 flex justify-start items-center">
           클래스 목록
           <span className="text-sm text-gray-500 ml-2">
@@ -267,7 +322,6 @@ const UnrecognizedView = () => {
             {
               Object.keys(
                 graphData.nodes.reduce((acc, node) => {
-                  // '_숫자'를 제거한 이름을 기준으로 그룹화
                   const pureName = node.properties.label.replace(/_\d+$/, "");
                   acc[pureName] = (acc[pureName] || 0) + 1;
                   return acc;
@@ -283,7 +337,6 @@ const UnrecognizedView = () => {
         >
           {Object.entries(
             Object.fromEntries(
-              // 라벨 그룹화 및 정렬
               Object.entries(
                 graphData.nodes.reduce((acc, node) => {
                   const name = node.properties.label;
@@ -291,7 +344,6 @@ const UnrecognizedView = () => {
                   return acc;
                 }, {})
               ).sort(([nameA, countA], [nameB, countB]) => {
-                // 정렬 기준: 개수(count) 내림차순 -> 이름(name) 오름차순
                 return countB - countA || nameA.localeCompare(nameB);
               })
             )
