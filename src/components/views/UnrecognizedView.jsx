@@ -121,6 +121,13 @@ const UnrecognizedView = () => {
     setIsResizing(true);
   };
 
+  const handleUndo = () => {
+  };
+
+  // Redo 버튼 클릭 처리
+  const handleRedo = () => {
+  };
+
   return (
     <div className="h-screen flex position-relative">
       {/* 좌측 도구 메뉴 */}
@@ -267,7 +274,10 @@ const UnrecognizedView = () => {
           className={`p-2 text-white hover:bg-purple-700 rounded ${
             selectTool === "undo" ? "bg-purple-700" : ""
           }`}
-          onClick={() => setSelectTool(selectTool === "undo" ? "" : "undo")}
+          onClick={() => {
+            setSelectTool(selectTool === "undo" ? "" : "undo");
+            handleUndo();
+          }}
         >
           <Undo2 className="w-5 h-5" />
         </button>
@@ -275,10 +285,116 @@ const UnrecognizedView = () => {
           className={`p-2 text-white hover:bg-purple-700 rounded ${
             selectTool === "redo" ? "bg-purple-700" : ""
           }`}
-          onClick={() => setSelectTool(selectTool === "redo" ? "" : "redo")}
+          onClick={() => {
+            setSelectTool(selectTool === "redo" ? "" : "redo");
+            handleRedo();
+          }}
         >
           <Redo2 className="w-5 h-5" />
         </button>
+      </div>
+
+      {/* 메인 캔버스 영역 */}
+      <div className="flex-1 relative bg-gray-50">
+        <div className="absolute top-6 left-6 right-6">
+          <div className="flex justify-between items-center relative">
+            <h1 className="text-2xl font-semibold">미인식 개체 태깅</h1>
+
+            {/* 저장 로딩 아이콘 영역 */}
+            {isSaving && (
+              <>
+                <div className="absolute top-[-20px] right-[-15px] flex items-center gap-2 px-4 py-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                  <span className="text-sm text-gray-600">저장 중...</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* P&ID 도면 영역 */}
+        <div className="absolute inset-0 m-20">
+          <div className="flex justify-center">
+            <GraphVisualization
+              selectTool={selectTool}
+              setSelectTool={setSelectTool}
+              setSelectedSymbol={setSelectedSymbol}
+              selectedSymbol={selectedSymbol}
+              bright={bright}
+              setSelectedEdge={setSelectedEdge}
+              selectedEdge={selectedEdge}
+              nodeOpacity={opacity}
+              hoverClass={hoverClass}
+              graphData={graphData}
+              setGraphData={setGraphData}
+              imgURL={imgURL}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 리사이징 가능한 오른쪽 패널 */}
+      <div
+        style={{
+          width: `${rightPanelWidth}px`,
+          position: "relative",
+        }}
+        className="border-l border-gray-200 space-y-0 z-50 overflow-y-auto"
+      >
+        {/* 리사이징 핸들 */}
+        <div
+          className="absolute left-0 top-0 w-1 h-full cursor-ew-resize hover:bg-purple-400 transition-colors"
+          style={{ transform: "translateX(-50%)" }}
+          onMouseDown={startResizing}
+        />
+
+        <h2 className="text-lg font-semibold p-1 border-b border-gray-200 flex justify-start items-center">
+          클래스 목록
+          <span className="text-sm text-gray-500 ml-2">
+            (
+            {
+              Object.keys(
+                graphData.nodes.reduce((acc, node) => {
+                  const pureName = node.properties.label.replace(/_\d+$/, "");
+                  acc[pureName] = (acc[pureName] || 0) + 1;
+                  return acc;
+                }, {})
+              ).length
+            }
+            )
+          </span>
+        </h2>
+        <ul
+          className="max-h-[calc(100vh-10rem)] overflow-auto"
+          onMouseLeave={() => setHoverClass(null)}
+        >
+          {Object.entries(
+            Object.fromEntries(
+              Object.entries(
+                graphData.nodes.reduce((acc, node) => {
+                  const name = node.properties.label;
+                  acc[name] = (acc[name] || 0) + 1;
+                  return acc;
+                }, {})
+              ).sort(([nameA, countA], [nameB, countB]) => {
+                return countB - countA || nameA.localeCompare(nameB);
+              })
+            )
+          ).map(([name, count]) => (
+            <li
+              key={name}
+              className="flex items-center justify-between text-sm cursor-pointer hover:bg-gray-200 p-1.5"
+              onMouseOver={() => setHoverClass(name)}
+            >
+              <span title={name} className="truncate max-w-[calc(100%-3.5rem)]">
+                {name}
+              </span>
+              <span className="bg-purple-400 text-white px-2 rounded-full">
+                {count}
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
