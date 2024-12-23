@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import * as d3 from "d3";
 import LabelSelectorPopup from "../modals/ClassEditModal";
 import { v4 as uuidv4 } from "uuid";
@@ -84,7 +84,7 @@ const GraphVisualization = ({
       svg
         .selectAll(".node")
         .transition()
-        .duration(150)
+        .duration(100)
         .attr("opacity", (d) =>
           matchingNodeNames.includes(d.name) ? nodeOpacity : 0.2
         );
@@ -93,14 +93,14 @@ const GraphVisualization = ({
       svg
         .selectAll("circle")
         .transition()
-        .duration(150)
+        .duration(100)
         .attr("opacity", (d) => (matchingNodeNames.includes(d.name) ? 1 : 0.2));
 
       // 노드 텍스트 레이블 투명도 업데이트 (hover-label 제외)
       svg
         .selectAll("text:not(.hover-label)")
         .transition()
-        .duration(150)
+        .duration(100)
         .style("opacity", (d) =>
           matchingNodeNames.includes(d.name) ? 1 : 0.2
         );
@@ -109,7 +109,7 @@ const GraphVisualization = ({
       svg
         .selectAll(".edge-group")
         .transition()
-        .duration(150)
+        .duration(100)
         .style("opacity", (d) =>
           matchingNodeNames.includes(d.source) ||
           matchingNodeNames.includes(d.target)
@@ -121,7 +121,7 @@ const GraphVisualization = ({
       svg
         .select(".background image")
         .transition()
-        .duration(150)
+        .duration(100)
         .attr("filter", "brightness(0.3)");
 
       // 기존 hover 레이블 제거
@@ -150,27 +150,27 @@ const GraphVisualization = ({
       svg
         .selectAll(".node")
         .transition()
-        .duration(150)
+        .duration(100)
         .attr("opacity", nodeOpacity);
 
-      svg.selectAll("circle").transition().duration(150).attr("opacity", 1);
+      svg.selectAll("circle").transition().duration(100).attr("opacity", 1);
 
       svg
         .selectAll("text:not(.hover-label)")
         .transition()
-        .duration(150)
+        .duration(100)
         .style("opacity", 1);
 
       svg
         .selectAll(".edge-group")
         .transition()
-        .duration(150)
+        .duration(100)
         .style("opacity", 1);
 
       svg
         .select(".background image")
         .transition()
-        .duration(150)
+        .duration(100)
         .attr("filter", `brightness(${bright})`);
 
       // hover 레이블 및 관련 요소 제거
@@ -293,21 +293,21 @@ const GraphVisualization = ({
   }, [target, target2, isConnecting, graphData.edges, setSelectTool]);
 
   // 노드의 중심점 계산
-  const getCenter = (node) => {
+  const getCenter = useCallback((node) => {
     const [topLeft, bottomRight] = node.position;
     return [
       (topLeft[0] + bottomRight[0]) / 2,
       (topLeft[1] + bottomRight[1]) / 2,
     ];
-  };
+  }, []);
 
-  // 노드의 반지름 계산
-  const getRadius = (node) =>
-    Math.min(
-      (node.position[1][0] - node.position[0][0]) / 4,
-      (node.position[1][1] - node.position[0][1]) / 4
+  const getRadius = useCallback((node) => {
+    const [topLeft, bottomRight] = node.position;
+    return Math.min(
+      (bottomRight[0] - topLeft[0]) / 4,
+      (bottomRight[1] - topLeft[1]) / 4
     );
-
+  }, []);
   // 엣지 좌표 계산
   const getEdgeCoordinates = (source, target) => {
     const sourceNode = graphData.nodes.find((node) => node.name === source);
@@ -867,66 +867,79 @@ const GraphVisualization = ({
         return;
       }
 
+      // 선택된 노드와 현재 hover된 노드를 제외한 모든 노드의 opacity 낮추기
       svg
         .selectAll(".node, circle, text")
-        .filter((nodeData) => selectedNode !== d && nodeData !== d) // .node 필터 적용
+        .filter((nodeData) => nodeData !== d && nodeData !== selectedNode)
         .attr("opacity", 0.2);
 
-      svg.selectAll(".edge-group").attr("opacity", selectedNode ? 1 : 0.4);
+      // 선택된 노드와 현재 hover된 노드는 원래 opacity 유지
+      svg
+        .selectAll(".node, circle")
+        .filter((data) => data === d || data === selectedNode)
+        .attr("opacity", 0.8);
 
+      // 엣지 opacity 조정
+      svg.selectAll(".edge-group").attr("opacity", 0.4);
+
+      // 현재 노드의 resize 핸들 표시
       svg
         .selectAll(".resize-handle")
         .filter((handle) => handle.nodeIndex === graphData.nodes.indexOf(d))
         .attr("opacity", 1);
 
+      // 배경 이미지 어둡게
       svg
         .select(".background image")
         .transition()
-        .duration(150)
+        .duration(100)
         .attr("filter", "brightness(0.3)");
 
-      svg
-        .selectAll(".node, circle")
-        .filter((data) => data === d) // 현재 호버된 데이터와 일치하는 노드, 서클 선택
-        .attr("opacity", 0.8);
-
+      // 텍스트는 항상 잘 보이게
       svg
         .selectAll("text")
-        .filter((data) => data === d)
+        .filter((data) => data === d || data === selectedNode)
         .attr("opacity", 1);
     });
 
+    // circleNodes.on("mouseenter") 부분도 동일하게 수정
     circleNodes.on("mouseenter", function (event, d) {
       if ((isResizing && selectedNode !== d) || isResizing) {
         return;
       }
 
+      // 선택된 노드와 현재 hover된 노드를 제외한 모든 노드의 opacity 낮추기
       svg
         .selectAll(".node, circle, text")
-        .filter((nodeData) => selectedNode !== d && nodeData !== d) // .node 필터 적용
+        .filter((nodeData) => nodeData !== d && nodeData !== selectedNode)
         .attr("opacity", 0.2);
 
-      svg.selectAll(".edge-group").attr("opacity", selectedNode ? 1 : 0.4);
+      // 선택된 노드와 현재 hover된 노드는 원래 opacity 유지
+      svg
+        .selectAll(".node, circle")
+        .filter((data) => data === d || data === selectedNode)
+        .attr("opacity", 0.8);
 
+      // 엣지 opacity 조정
+      svg.selectAll(".edge-group").attr("opacity", 0.4);
+
+      // 현재 노드의 resize 핸들 표시
       svg
         .selectAll(".resize-handle")
         .filter((handle) => handle.nodeIndex === graphData.nodes.indexOf(d))
         .attr("opacity", 1);
 
+      // 배경 이미지 어둡게
       svg
         .select(".background image")
         .transition()
-        .duration(150)
+        .duration(100)
         .attr("filter", "brightness(0.3)");
 
-      svg
-        .selectAll(".node, circle")
-        .filter((data) => data === d) // 현재 호버된 데이터와 일치하는 노드, 서클 선택
-        .attr("opacity", 0.8);
-
+      // 텍스트는 항상 잘 보이게
       svg
         .selectAll("text")
-        .filter((data) => data === d)
+        .filter((data) => data === d || data === selectedNode)
         .attr("opacity", 1);
     });
 
@@ -942,7 +955,7 @@ const GraphVisualization = ({
         svg
           .select(".background image")
           .transition()
-          .duration(150)
+          .duration(100)
           .attr("filter", `brightness(${bright})`);
       }
     });
@@ -959,7 +972,7 @@ const GraphVisualization = ({
         svg
           .select(".background image")
           .transition()
-          .duration(150)
+          .duration(100)
           .attr("filter", `brightness(${bright})`);
       }
     });
@@ -1238,56 +1251,56 @@ const GraphVisualization = ({
       svg
         .selectAll(".node, circle")
         .transition()
-        .duration(150)
+        .duration(100)
         .style("opacity", 0)
         .style("pointer-events", "none");
       svg
         .selectAll(".edge-group")
         .transition()
-        .duration(150)
+        .duration(100)
         .style("opacity", 0)
         .style("pointer-events", "none");
 
       svg
         .selectAll(".resize-handle")
         .transition()
-        .duration(150)
+        .duration(100)
         .style("opacity", 0)
         .style("pointer-events", "none");
 
       svg
         .selectAll("text")
         .transition()
-        .duration(150)
+        .duration(100)
         .style("opacity", 0)
         .style("pointer-events", "none");
     }
 
     if (selectTool === "visible") {
       const svg = d3.select(svgRef.current);
-      svg.selectAll("circle").transition().duration(150).style("opacity", 1);
+      svg.selectAll("circle").transition().duration(100).style("opacity", 1);
       svg
         .selectAll(".node")
         .transition()
-        .duration(150)
+        .duration(100)
         .style("opacity", nodeOpacity)
         .style("pointer-events", "auto");
       svg
         .selectAll(".edge-group")
         .transition()
-        .duration(150)
+        .duration(100)
         .style("opacity", 1)
         .style("pointer-events", "auto");
       svg
         .selectAll(".resize-handle")
         .transition()
-        .duration(150)
+        .duration(100)
         .style("opacity", 0)
         .style("pointer-events", "auto");
       svg
         .selectAll("text")
         .transition()
-        .duration(150)
+        .duration(100)
         .style("opacity", 1)
         .style("pointer-events", "auto");
     }
