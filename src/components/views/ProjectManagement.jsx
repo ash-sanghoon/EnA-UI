@@ -1,21 +1,28 @@
-
 // Import necessary libraries
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { X, Upload, Underline } from 'lucide-react';
-import axios from 'axios';
-import { useParams } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useCallback, useRef, useEffect } from "react";
+import { X, Upload, Underline } from "lucide-react";
+import axios from "axios";
+import { useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const ProjectManagement = () => {
-  const [project, setProject] = useState({uuid:"",country:"",company:"",standard:"",projectName:"",drawingCount:0,files:[],drawings:[]});
+  const [project, setProject] = useState({
+    uuid: "",
+    country: "",
+    company: "",
+    standard: "",
+    projectName: "",
+    drawingCount: 0,
+    files: [],
+    drawings: [],
+  });
   const [selectedRuns, setSelectedRuns] = useState({});
   const { projectId } = useParams();
   const navigate = useNavigate();
 
-
   const handleChange = (e) => {
     const { name, value } = e.target;
-  
+
     // 상태를 업데이트
     setProject((prev) => ({
       ...prev,
@@ -27,7 +34,6 @@ const ProjectManagement = () => {
   useEffect(() => {
     fetchProjectDetails();
   }, [projectId]);
-  
 
   // 프로젝트 정보 조회 함수
   const fetchProjectDetails = async () => {
@@ -82,7 +88,7 @@ const ProjectManagement = () => {
         files: project.files.filter((file) => file.uuid !== fileUuid),
       });
     } catch (error) {
-      console.error('Failed to delete file:', error);
+      console.error("Failed to delete file:", error);
     }
   };
 
@@ -93,50 +99,50 @@ const ProjectManagement = () => {
 
   const dragRef = useRef(null);
 
-  const handleFileChange = useCallback(async (e) => {
-    let selectFiles = [];
-    if (e.type === "drop") {
-      selectFiles = e.dataTransfer.files;
-    }
-    else {
-      selectFiles = e.target.files;
-    }
-    if (!selectFiles || selectFiles.length === 0) return;
-  
-    try {
-      const formDataUpload = new FormData();
-      formDataUpload.append("projectUuid", formDataRef.current.uuid);
-      Array.from(selectFiles).forEach((file) => {
-        formDataUpload.append('uploadFiles', file);
-      });
-  
-      const response = await axios.post('/api/files/upload', formDataUpload, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-  
-      // 응답으로 받은 파일 UUID 정보 저장
-      const uploadedFileUuids = response.data.map(fileInfo => ({
-        fileName: fileInfo.fileName,
-        uuid: fileInfo.uuid,
-        type :fileInfo.fileName
-      }));
-      setProject((prevProject) => ({
-        ...prevProject,
-        files: [...prevProject.files, ...uploadedFileUuids],
-      }));
+  const handleFileChange = useCallback(
+    async (e) => {
+      let selectFiles = [];
+      if (e.type === "drop") {
+        selectFiles = e.dataTransfer.files;
+      } else {
+        selectFiles = e.target.files;
+      }
+      if (!selectFiles || selectFiles.length === 0) return;
 
-      // 기존 files 상태에 새로운 파일 UUID 추가
-      setFiles(prevFiles => [...prevFiles, ...uploadedFileUuids]);
-  
-    } catch (error) {
-      console.error('파일 업로드 중 오류 발생:', error);
-      // 필요한 경우 사용자에게 오류 표시
-    }
-  }, [setFiles]);  // setFiles를 의존성 배열에 추가
+      try {
+        const formDataUpload = new FormData();
+        formDataUpload.append("projectUuid", formDataRef.current.uuid);
+        Array.from(selectFiles).forEach((file) => {
+          formDataUpload.append("uploadFiles", file);
+        });
 
-  
+        const response = await axios.post("/api/files/upload", formDataUpload, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+
+        // 응답으로 받은 파일 UUID 정보 저장
+        const uploadedFileUuids = response.data.map((fileInfo) => ({
+          fileName: fileInfo.fileName,
+          uuid: fileInfo.uuid,
+          type: fileInfo.fileName,
+        }));
+        setProject((prevProject) => ({
+          ...prevProject,
+          files: [...prevProject.files, ...uploadedFileUuids],
+        }));
+
+        // 기존 files 상태에 새로운 파일 UUID 추가
+        setFiles((prevFiles) => [...prevFiles, ...uploadedFileUuids]);
+      } catch (error) {
+        console.error("파일 업로드 중 오류 발생:", error);
+        // 필요한 경우 사용자에게 오류 표시
+      }
+    },
+    [setFiles]
+  ); // setFiles를 의존성 배열에 추가
+
   const handleProjectSave = async () => {
     setIsLoading(true);
     try {
@@ -162,16 +168,18 @@ const ProjectManagement = () => {
 
   return (
     <div className="p-8">
-
       <div className="">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">프로젝트 도면 관리</h1>
-          <button className="px-6 py-2 bg-green-500 text-white font-medium rounded hover:bg-green-600" onClick={(e) => {
-                            e.stopPropagation();
-                            handleProjectSave();
-                          }}
-                          disabled={isLoading}>
-                          {isLoading ? '저장 및 도면 생성 중...' : '저장'}
+          <button
+            className="px-6 py-2 bg-green-500 text-white font-medium rounded hover:bg-green-600"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleProjectSave();
+            }}
+            disabled={isLoading}
+          >
+            {isLoading ? "저장 및 도면 생성 중..." : "저장"}
           </button>
         </div>
         <div className="grid grid-cols-12 gap-4 items-stretch">
@@ -179,7 +187,10 @@ const ProjectManagement = () => {
           <div className="col-span-8 bg-white border rounded p-4">
             <div className="grid grid-cols-8 grid-rows-3 gap-4 mt-2">
               <div className="col-span-1 flex justify-end items-center">
-                <label className="block text-sm font-medium text-gray-700 mb-1"> 국가 </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {" "}
+                  국가{" "}
+                </label>
               </div>
               <div className="col-span-3">
                 <select
@@ -214,7 +225,10 @@ const ProjectManagement = () => {
                 </select>
               </div>
               <div className="col-span-1 flex justify-end items-center">
-                <label className="block text-sm font-medium text-gray-700 mb-1"> 프로젝트명 </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {" "}
+                  프로젝트명{" "}
+                </label>
               </div>
               <div className="col-span-7">
                 <input
@@ -229,7 +243,10 @@ const ProjectManagement = () => {
               </div>
 
               <div className="col-span-1 flex justify-end items-center">
-                <label className="block text-sm font-medium text-gray-700 mb-1"> 표준 </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {" "}
+                  표준{" "}
+                </label>
               </div>
               <div className="col-span-3">
                 <select
@@ -246,7 +263,10 @@ const ProjectManagement = () => {
               </div>
 
               <div className="col-span-1 flex justify-end items-center">
-                <label className="block text-sm font-medium text-gray-700 mb-1"> 도면 수량 </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {" "}
+                  도면 수량{" "}
+                </label>
               </div>
               <div className="col-span-3">
                 <input
@@ -265,7 +285,6 @@ const ProjectManagement = () => {
 
           {/* Files Section */}
           <div className="col-span-4 bg-white border rounded p-4 justify-center">
-
             <div className="mt-1">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 도면 파일 업로드
@@ -281,11 +300,17 @@ const ProjectManagement = () => {
                 />
                 <label
                   htmlFor="drawing-upload"
-                  className={isDragging ? "cursor-crosshair" : "cursor-pointer flex flex-col items-center"}
+                  className={
+                    isDragging
+                      ? "cursor-crosshair"
+                      : "cursor-pointer flex flex-col items-center"
+                  }
                   ref={dragRef}
                 >
                   <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-500">클릭하여 도면 파일을 선택하세요</p>
+                  <p className="text-sm text-gray-500">
+                    클릭하여 도면 파일을 선택하세요
+                  </p>
                 </label>
               </div>
               {project.files.map((file) => (
@@ -295,7 +320,9 @@ const ProjectManagement = () => {
                 >
                   <span className="truncate">{file.name}</span>
                   <div className="flex items-center">
-                    <span className="mr-2 text-sm text-gray-600">{file.type}</span>
+                    <span className="mr-2 text-sm text-gray-600">
+                      {file.type}
+                    </span>
                     <button
                       onClick={() => deleteFile(file.uuid)}
                       className="bg-red-500 text-white px-2 rounded"
@@ -321,30 +348,30 @@ const ProjectManagement = () => {
             >
               <div className="grid grid-cols-7 gap-8">
                 <div className="col-span-2">
-                  <h4 className="text-lg font-semibold mb-2 text-center">{drawing.name}</h4>
-                  <br></br><br></br>
+                  <h4 className="text-lg font-semibold mb-2 text-center">
+                    {drawing.name}
+                  </h4>
+                  <br></br>
+                  <br></br>
                   <button
-                    className="px-4 py-1 text-sm font-medium text-white bg-blue-500 rounded hover:bg-blue-600 disabled:bg-blue-200 disabled:cursor-not-allowed"
-                    disabled={true}
+                    className="px-4 py-1 text-sm font-medium text-[#6A5ACD] border border-[#6A5ACD] rounded hover:border-[#7A6EDF] hover:bg-[#F0F0FF] disabled:border-[#CDC1FF] disabled:cursor-not-allowed mb-4"
                   >
                     모델실행
-                  </button><br></br>
+                  </button>
                   <button
-                    className="px-4 py-1 text-sm font-medium text-white bg-red-500 rounded hover:bg-red-600 disabled:bg-red-200 disabled:cursor-not-allowed"
-                    disabled={true}
+                    className="px-4 py-1 text-sm font-medium text-red-500 border border-red-500 rounded hover:border-red-600 hover:bg-red-100 disabled:border-[#CDC1FF] disabled:cursor-not-allowed mb-4"
                   >
                     도면삭제
-                  </button><br></br>
+                  </button>
                   <button
-                    className="px-4 py-1 text-sm font-medium text-white bg-green-500 rounded hover:bg-green-600 disabled:bg-green-200 disabled:cursor-not-allowed"
-                    disabled={true}
+                    className="px-4 py-1 text-sm font-medium text-[#2196F3] border border-[#2196F3] rounded hover:border-[#42A5F5] hover:bg-[#F0F8FF] disabled:border-[#CDC1FF] disabled:cursor-not-allowed"
                   >
                     도면완료
                   </button>
                 </div>
                 <div className="col-span-5">
                   <img
-                    src={'/api/files/view/'+drawing.thumnbnailUuid}
+                    src={"/api/files/view/" + drawing.thumnbnailUuid}
                     alt={drawing.name}
                     className="w-full h-45 object-contain cursor-pointer mb-2"
                     onClick={() => handleDrawingClick(drawing)}
@@ -360,15 +387,17 @@ const ProjectManagement = () => {
                     <div
                       key={run.runUUID}
                       className={`cursor-pointer text-sm py-0 hover:text-blue-500 ${
-                        selectedRuns[drawing.uuid]?.runUUID === run.runUUID ? 'text-blue-600 font-semibold' : ''
+                        selectedRuns[drawing.uuid]?.runUUID === run.runUUID
+                          ? "text-blue-600 font-semibold"
+                          : ""
                       }`}
                       onClick={() => handleRunClick(drawing.uuid, run)}
                     >
-                      {run.runDate}  &nbsp;&nbsp;&nbsp;
+                      {run.runDate} &nbsp;&nbsp;&nbsp;
                       <button
-                        className="px-4 py-1 text-sm font-medium text-white bg-green-500 rounded hover:bg-green-600 disabled:bg-green-200 disabled:cursor-not-allowed"
+                        className="px-4 py-1 text-sm font-medium text-white bg-[#A294F9] rounded hover:bg-[#9283ef] disabled:bg-[#ccc] disabled:cursor-not-allowed"
                         onClick={() => {
-                          handleDrawingRunClick(drawing.uuid, run)
+                          handleDrawingRunClick(drawing.uuid, run);
                         }}
                       >
                         수정
@@ -383,13 +412,23 @@ const ProjectManagement = () => {
                   {selectedRuns[drawing.uuid] ? (
                     <div className="text-sm">
                       <div>Model: {selectedRuns[drawing.uuid].modelName}</div>
-                      <div>Instrument Found, Changed: {selectedRuns[drawing.uuid].instrumentFoundedCnt}, {selectedRuns[drawing.uuid].instrumentChangedCnt}</div>
-                      <div>Pipe Found, Changed : {selectedRuns[drawing.uuid].pipeFoundedCnt}, {selectedRuns[drawing.uuid].pipeFoundedCnt}</div>
+                      <div>
+                        Instrument Found, Changed:{" "}
+                        {selectedRuns[drawing.uuid].instrumentFoundedCnt},{" "}
+                        {selectedRuns[drawing.uuid].instrumentChangedCnt}
+                      </div>
+                      <div>
+                        Pipe Found, Changed :{" "}
+                        {selectedRuns[drawing.uuid].pipeFoundedCnt},{" "}
+                        {selectedRuns[drawing.uuid].pipeFoundedCnt}
+                      </div>
                       <div>validate graph : No</div>
                       <div>unuse pipe, node : ?, ?</div>
                     </div>
                   ) : (
-                    <div className="text-gray-500 text-sm">Select a run to view details</div>
+                    <div className="text-gray-500 text-sm">
+                      Select a run to view details
+                    </div>
                   )}
                 </div>
               </div>
@@ -397,7 +436,6 @@ const ProjectManagement = () => {
           ))}
         </div>
       </div>
-
     </div>
   );
 };
