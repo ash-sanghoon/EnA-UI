@@ -238,7 +238,7 @@ const EnhancedLabelSelector = ({
       >
         <div
           ref={headerRef}
-          className="drag-handle flex justify-between items-center p-4 cursor-move bg-gray-50 border-b border-gray-200"
+          className="drag-handle flex justify-between items-center px-4 py-2 cursor-move bg-gray-50 border-b border-gray-200"
         >
           <h2 className="text-sm font-bold">{itemType} 속성 편집</h2>
           <button
