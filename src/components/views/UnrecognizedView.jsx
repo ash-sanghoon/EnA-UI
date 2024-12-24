@@ -27,6 +27,7 @@ const UnrecognizedView = () => {
   const [bright, setBright] = useState(0.8);
   const [opacity, setOpacity] = useState(0.7);
   const [brightnessOpen, setBrightnessOpen] = useState(false);
+  const [isShowClassList, setIsShowClassList] = useState(false);
   const [opacityOpen, setOpacityOpen] = useState(false);
   const sliderRef = useRef(null);
   const opacitySliderRef = useRef(null);
@@ -35,13 +36,14 @@ const UnrecognizedView = () => {
   const [imgURL, setImgURL] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const { drawingId, runId } = useParams();
-  const [initialGraphData, setInitialGraphData] = useState(null);
 
   // 패널 리사이징을 위한 상태
   const [rightPanelWidth, setRightPanelWidth] = useState(280);
   const [isResizing, setIsResizing] = useState(false);
 
-  const [updatedGraphData, setUpdatedGraphData] = useState(graphData || {});
+  const [history, setHistory] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [initState, setInitState] = useState(null);
 
   // 초기 데이터 로드
   useEffect(() => {
@@ -55,7 +57,7 @@ const UnrecognizedView = () => {
         `/api/drawing/run_detail/${drawingId}/${runId}`
       );
       setGraphData(response.data);
-      setInitialGraphData(JSON.parse(JSON.stringify(response.data)));
+      setInitState(response.data);
       setImgURL(`/api/files/view/${response.data.drawing.drawingUuid}`);
     } catch (error) {
       console.error("데이터 로드 실패:", error);
@@ -125,12 +127,20 @@ const UnrecognizedView = () => {
     setIsResizing(true);
   };
 
-  const handleUndo = () => {};
+  const handleUndo = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex((prev) => prev - 1);
+    }
+  };
 
-  // Redo 버튼 클릭 처리
-  const handleRedo = () => {};
+  const handleRedo = () => {
+    if (currentIndex < history.length - 1) {
+      setCurrentIndex((prev) => prev + 1);
+    }
+  };
 
-  useEffect(() => {}, [graphData]);
+  const isUndoDisabled = currentIndex <= 0;
+  const isRedoDisabled = currentIndex >= history.length - 1;
 
   return (
     <div className="h-screen flex position-relative">
@@ -138,7 +148,9 @@ const UnrecognizedView = () => {
       <div className="w-16 bg-purple-600 p-4 flex flex-col items-center space-y-4 z-50">
         <button
           className={"p-2 text-white hover:bg-purple-700 rounded"}
-          onClick={() => save()}
+          onClick={() => {
+            console.log("save");
+          }}
         >
           <Save className="w-5 h-5" />
         </button>
@@ -175,14 +187,12 @@ const UnrecognizedView = () => {
           <PenTool className="w-5 h-5" />
         </button>
         <button
-          className={`p-2 text-white hover:bg-purple-700 rounded ${
-            selectTool === "remove" ? "bg-purple-700" : ""
-          }`}
+          className={`p-2 text-white hover:bg-purple-700 rounded`}
           style={{
             opacity: selectedSymbol ? 1 : 0.5,
             pointerEvents: selectedSymbol ? "auto" : "none",
           }}
-          onClick={() => setSelectTool(selectTool === "remove" ? "" : "remove")}
+          onClick={() => setSelectTool("remove")}
         >
           <Trash2 className="w-5 h-5" />
         </button>
@@ -275,24 +285,20 @@ const UnrecognizedView = () => {
           )}
         </button>
         <button
-          className={`p-2 text-white hover:bg-purple-700 rounded ${
-            selectTool === "undo" ? "bg-purple-700" : ""
+          className={`p-2 rounded ${
+            isUndoDisabled ? "text-gray-400" : "text-white hover:bg-purple-700"
           }`}
-          onClick={() => {
-            setSelectTool(selectTool === "undo" ? "" : "undo");
-            handleUndo();
-          }}
+          onClick={handleUndo}
+          disabled={isUndoDisabled}
         >
           <Undo2 className="w-5 h-5" />
         </button>
         <button
-          className={`p-2 text-white hover:bg-purple-700 rounded ${
-            selectTool === "redo" ? "bg-purple-700" : ""
+          className={`p-2 rounded ${
+            isRedoDisabled ? "text-gray-400" : "text-white hover:bg-purple-700"
           }`}
-          onClick={() => {
-            setSelectTool(selectTool === "redo" ? "" : "redo");
-            handleRedo();
-          }}
+          onClick={handleRedo}
+          disabled={isRedoDisabled}
         >
           <Redo2 className="w-5 h-5" />
         </button>
@@ -332,8 +338,12 @@ const UnrecognizedView = () => {
               graphData={graphData}
               setGraphData={setGraphData}
               imgURL={imgURL}
-              initialGraphData={initialGraphData}
-              setInitialGraphData={setInitialGraphData}
+              setIsSaving={setIsSaving}
+              history={history}
+              setHistory={setHistory}
+              currentIndex={currentIndex}
+              setCurrentIndex={setCurrentIndex}
+              initState={initState}
             />
           </div>
         </div>
@@ -355,51 +365,82 @@ const UnrecognizedView = () => {
         />
 
         <h2 className="text-lg font-semibold p-1 border-b border-gray-200 flex justify-start items-center">
-          클래스 목록
+          {isShowClassList ? "클래스 목록" : "LineNo 목록"}
           <span className="text-sm text-gray-500 ml-2">
             (
-            {
-              Object.keys(
-                graphData.nodes.reduce((acc, node) => {
-                  const pureName = node.properties.label.replace(/_\d+$/, "");
-                  acc[pureName] = (acc[pureName] || 0) + 1;
-                  return acc;
-                }, {})
-              ).length
-            }
+            {isShowClassList
+              ? Object.keys(
+                  graphData.nodes.reduce((acc, node) => {
+                    const pureName = node.properties.label.replace(/_\d+$/, "");
+                    acc[pureName] = (acc[pureName] || 0) + 1;
+                    return acc;
+                  }, {})
+                ).length
+              : graphData.nodes.length}
             )
           </span>
+          <button
+            type="button"
+            className="ml-auto p-1 text-sm text-gray-500 hover:bg-gray-200 transition-colors"
+            onClick={() => setIsShowClassList(!isShowClassList)}
+          >
+            {isShowClassList ? "LineNo" : "Class"}
+          </button>
         </h2>
         <ul
           className="max-h-[calc(100vh-10rem)] overflow-auto"
           onMouseLeave={() => setHoverClass(null)}
         >
-          {Object.entries(
-            Object.fromEntries(
-              Object.entries(
-                graphData.nodes.reduce((acc, node) => {
-                  const name = node.properties.label;
-                  acc[name] = (acc[name] || 0) + 1;
+          {isShowClassList
+            ? Object.entries(
+                graphData.nodes.reduce((acc, { properties: { label } }) => {
+                  acc[label] = (acc[label] || 0) + 1;
                   return acc;
                 }, {})
-              ).sort(([nameA, countA], [nameB, countB]) => {
-                return countB - countA || nameA.localeCompare(nameB);
-              })
-            )
-          ).map(([name, count]) => (
-            <li
-              key={name}
-              className="flex items-center justify-between text-sm cursor-pointer hover:bg-gray-200 p-1.5"
-              onMouseOver={() => setHoverClass(name)}
-            >
-              <span title={name} className="truncate max-w-[calc(100%-3.5rem)]">
-                {name}
-              </span>
-              <span className="bg-purple-400 text-white px-2 rounded-full">
-                {count}
-              </span>
-            </li>
-          ))}
+              )
+                .sort(([, a], [, b]) => b - a)
+                .map(([name, count]) => (
+                  <li
+                    key={name}
+                    className="flex items-center justify-between text-sm cursor-pointer hover:bg-gray-200 p-1.5"
+                    onMouseOver={() => setHoverClass(name)}
+                  >
+                    <span
+                      title={name}
+                      className="truncate max-w-[calc(100%-3.5rem)]"
+                    >
+                      {name}
+                    </span>
+                    <span className="bg-purple-400 text-white px-2 rounded-full">
+                      {count}
+                    </span>
+                  </li>
+                ))
+            : Object.entries(
+                graphData.edges.reduce((acc, { properties }) => {
+                  // properties와 lineNo가 모두 존재하는지 확인
+                  if (properties && properties.lineNo) {
+                    acc[properties.lineNo] = (acc[properties.lineNo] || 0) + 1;
+                  }
+                  return acc;
+                }, {})
+              ).map(([lineNo, count]) => (
+                <li
+                  key={lineNo}
+                  className="flex items-center justify-between text-sm cursor-pointer hover:bg-gray-200 p-1.5"
+                  onMouseOver={() => setHoverClass(lineNo)}
+                >
+                  <span
+                    title={lineNo}
+                    className="truncate max-w-[calc(100%-3.5rem)]"
+                  >
+                    {lineNo}
+                  </span>
+                  <span className="bg-purple-400 text-white px-2 rounded-full">
+                    {count}
+                  </span>
+                </li>
+              ))}
         </ul>
       </div>
     </div>
