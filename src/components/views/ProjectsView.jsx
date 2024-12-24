@@ -1,10 +1,21 @@
 import React, { useState } from "react";
 
-import { Plus, Search, Filter, ArrowUpRight, Edit2, ChevronRight } from 'lucide-react';
-import dynamic from 'next/dynamic';
+import {
+  Plus,
+  Search,
+  Filter,
+  ArrowUpRight,
+  Edit2,
+  ChevronRight,
+} from "lucide-react";
+import dynamic from "next/dynamic";
 
-const NewProjectModal = dynamic(() => import('../modals/NewProjectModal'), { ssr: false });
-const AddDrawingModal = dynamic(() => import('../modals/AddDrawingModal'), { ssr: false });
+const NewProjectModal = dynamic(() => import("../modals/NewProjectModal"), {
+  ssr: false,
+});
+const AddDrawingModal = dynamic(() => import("../modals/AddDrawingModal"), {
+  ssr: false,
+});
 
 import { useNavigate } from 'react-router-dom';
 const ProjectsView = ({ setSelectedProject }) => {
@@ -16,7 +27,9 @@ const ProjectsView = ({ setSelectedProject }) => {
     country: "",
   });
 
-  const [projects, setProjects] = useState([]);
+  const [projects, setProjects] = useState(
+    JSON.parse(localStorage.getItem("searchData")) || []
+  );
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -45,6 +58,7 @@ const ProjectsView = ({ setSelectedProject }) => {
     });
     const data = await response.json();
     setProjects(data);
+    localStorage.setItem("searchData", JSON.stringify(data));
   };
 
   const handleNewProject = async () => {
@@ -58,16 +72,19 @@ const ProjectsView = ({ setSelectedProject }) => {
     const data = await response.json();
     handleNavigateToDetail(data.uuid);
   };
-  
+
   return (
     <div className="p-8 bg-white-100 /*min-h-screen*/">
       {/* 헤더 영역 */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">프로젝트 관리</h1>
-        <button className="px-6 py-2 bg-green-500 text-white font-medium rounded hover:bg-green-600" onClick={(e) => {
-                          e.stopPropagation();
-                          handleNewProject();
-                        }}>
+        <button
+          className="px-6 py-2 bg-green-500 text-white font-medium rounded hover:bg-green-600"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleNewProject();
+          }}
+        >
           프로젝트 추가
         </button>
       </div>
@@ -79,7 +96,7 @@ const ProjectsView = ({ setSelectedProject }) => {
           <div className="col-span-3 flex items-center">
             <label
               className="font-medium w-28 pl-8 pr-2"
-              style={{ minWidth: "120px" , textAlign: "right"}}
+              style={{ minWidth: "120px", textAlign: "right" }}
             >
               표준
             </label>
@@ -94,7 +111,7 @@ const ProjectsView = ({ setSelectedProject }) => {
           <div className="col-span-3 flex items-center">
             <label
               className="font-medium w-28 pl-8 pr-2"
-              style={{ minWidth: "120px" , textAlign: "right"}}
+              style={{ minWidth: "120px", textAlign: "right" }}
             >
               회사
             </label>
@@ -109,7 +126,7 @@ const ProjectsView = ({ setSelectedProject }) => {
           <div className="col-span-3 flex items-center">
             <label
               className="font-medium w-28 pl-8 pr-2"
-              style={{ minWidth: "120px" , textAlign: "right" }}
+              style={{ minWidth: "120px", textAlign: "right" }}
             >
               국가
             </label>
@@ -197,12 +214,14 @@ const ProjectsView = ({ setSelectedProject }) => {
                 <td className="border border-gray-300 px-4 py-2 text-center">
                   <div className="flex items-center">
                     <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
-                      <div 
-                        className="bg-purple-600 h-2 rounded-full" 
+                      <div
+                        className="bg-purple-600 h-2 rounded-full"
                         style={{ width: `${project.progress}%` }}
                       />
                     </div>
-                    <span className="text-sm text-gray-500">{project.progress}%</span>
+                    <span className="text-sm text-gray-500">
+                      {project.progress}%
+                    </span>
                   </div>
                 </td>
                 <td className="border border-gray-300 px-4 py-2 text-center">
@@ -212,13 +231,13 @@ const ProjectsView = ({ setSelectedProject }) => {
                   <div className="flex justify-end space-x-2">
                     <button className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600" onClick={(e) => {
                           e.stopPropagation();
-                          handleNavigateToDetail(project.uuid, project.name);
+                          handleNavigateToDetail(project.uuid);
                         }}>
                       상세
                     </button>
                     <button className="px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600" onClick={(e) => {
                           e.stopPropagation();
-                          handleNavigateToResults(project.uuid, project.name);
+                          handleNavigateToResults(project.uuid);
                         }}>
                       결과
                     </button>
