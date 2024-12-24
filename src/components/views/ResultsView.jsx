@@ -1,17 +1,24 @@
 import React, { useState } from 'react';
 import { Search, Filter, ChevronRight, Share, Download } from 'lucide-react';
+import Dependencies from "./Dependencies.js";
+import { useParams } from 'react-router-dom';
 
 const ResultsView = () => {
   const [activeTab, setActiveTab] = useState('graph');
+  const { projectId } = useParams();
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="flex flex-col">
       {/* Header */}
       <div className="p-6 border-b bg-white">
         <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-semibold">공정 설계도 분석 결과</h1>
-            <p className="text-gray-500">도면 ID: PID-2024-001</p>
+          <div className="grid grid-cols-12 gap-4 items-stretch">
+            <div className="col-span-7">
+              <h1 className="text-2xl font-semibold">공정 설계도 분석 결과</h1>
+            </div>
+            <div className="col-span-5 flex items-end">
+              <p className="text-gray-500">도면 ID: PID-2024-001</p>
+            </div>
           </div>
           <div className="flex space-x-3">
             <button className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg flex items-center">
@@ -101,6 +108,14 @@ const ResultsView = () => {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'dependencies' && (
+          <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow p-1">
+            <Dependencies projectId={projectId} drawingId=""></Dependencies>
+          </div>
           </div>
         )}
       </div>

@@ -21,6 +21,7 @@ const ProjectManagement = React.lazy(() =>
 );
 
 const App = () => {
+  const [selectedProject, setSelectedProject] = useState(".. Project ..");
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -35,13 +36,13 @@ const App = () => {
     <Suspense fallback={<div>Loading...</div>}>
       <BrowserRouter>
         <div className="flex h-screen">
-          <Sidebar />
+          <Sidebar selectedProject={selectedProject} />
           <div className="flex-1 flex flex-col overflow-hidden">
             <Header />
             <main className="flex-1 overflow-auto bg-gray-50">
               <Routes>
                 <Route path="/" element={<DashboardView />} />
-                <Route path="/projects" element={<ProjectsView />} />
+                <Route path="/projects" element={<ProjectsView  setSelectedProject={setSelectedProject}/>} />
                 <Route path="/symbols" element={<SymbolsView />} />
                 <Route path="/results/:projectId" element={<ResultsView />} />
                 <Route path="/unrecognized/:drawingId/:runId" element={<UnrecognizedView />} />
