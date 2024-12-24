@@ -40,11 +40,13 @@ const GraphVisualization = ({
   const [isLabelPopupOpen, setIsLabelPopupOpen] = useState(false);
   const svgRef = useRef(null);
   const isFirstRender = useRef(true);
+  const isFirstRender2 = useRef(true);
   const [isPanning, setIsPanning] = useState(false);
   const [startPoint, setStartPoint] = useState({ x: 0, y: 0 });
   const [isCtrlPressed, setIsCtrlPressed] = useState(false);
   const [saveData, setSaveData] = useState({ kind: "", name: "", action: "" });
   const [pendingSaveData, setPendingSaveData] = useState(null);
+  const initRef = useRef(null);
   const draggedNodeRef = useRef(null);
   const [viewBox, setViewBox] = useState({
     x: 0,
@@ -57,16 +59,22 @@ const GraphVisualization = ({
 
   useEffect(() => {
     if (initState) {
-      setGraphData(_.cloneDeep(initState));
+      currentIndex += 1;
+      initRef.current = _.cloneDeep(initState);
+      console.log(initRef.current);
+      isFirstRender2.current = false;
     }
   }, [initState]);
 
   useEffect(() => {
+    console.log(initRef);
+    if (!initRef.current) return;
     console.log(history);
     console.log(currentIndex);
     if (history.length > 0) {
-      if (currentIndex === 0 && initState) {
-        setGraphData(initState);
+      if (currentIndex === 0) {
+        setGraphData(initRef.current);
+        currentIndex += 1;
       } else {
         handleHistoryChange(history, currentIndex);
       }
@@ -75,6 +83,7 @@ const GraphVisualization = ({
 
   // handleHistoryChange 함수 수정
   const handleHistoryChange = (history, currentIndex) => {
+    console.log(graphData.nodes);
     const currentAction = history[currentIndex];
     if (!currentAction) return;
 
@@ -187,13 +196,19 @@ const GraphVisualization = ({
       prevGraphDataRef.current = _.cloneDeep(graphData);
       return;
     }
-
+    let isGraphDataChanged;
     // 깊은 복사본으로 비교
-    const isGraphDataChanged = !_.isEqual(
-      _.cloneDeep(prevGraphDataRef.current),
-      _.cloneDeep(graphData)
-    );
-
+    if (currentIndex === 0) {
+      isGraphDataChanged = !_.isEqual(
+        _.cloneDeep(initRef.current),
+        _.cloneDeep(graphData)
+      );
+    } else {
+      isGraphDataChanged = !_.isEqual(
+        _.cloneDeep(prevGraphDataRef.current),
+        _.cloneDeep(graphData)
+      );
+    }
     if (isGraphDataChanged) {
       save();
       prevGraphDataRef.current = _.cloneDeep(graphData);
@@ -214,7 +229,7 @@ const GraphVisualization = ({
       svg
         .selectAll(".node")
         .transition()
-        .duration(100)
+        .duration(80)
         .attr("opacity", (d) =>
           matchingNodeNames.includes(d.name) ? nodeOpacity : 0.2
         );
@@ -223,14 +238,14 @@ const GraphVisualization = ({
       svg
         .selectAll("circle")
         .transition()
-        .duration(100)
+        .duration(80)
         .attr("opacity", (d) => (matchingNodeNames.includes(d.name) ? 1 : 0.2));
 
       // 노드 텍스트 레이블 투명도 업데이트 (hover-label 제외)
       svg
         .selectAll("text:not(.hover-label)")
         .transition()
-        .duration(100)
+        .duration(80)
         .style("opacity", (d) =>
           matchingNodeNames.includes(d.name) ? 1 : 0.2
         );
@@ -239,7 +254,7 @@ const GraphVisualization = ({
       svg
         .selectAll(".edge-group")
         .transition()
-        .duration(100)
+        .duration(80)
         .style("opacity", (d) =>
           matchingNodeNames.includes(d.source) ||
           matchingNodeNames.includes(d.target)
@@ -251,7 +266,7 @@ const GraphVisualization = ({
       svg
         .select(".background image")
         .transition()
-        .duration(100)
+        .duration(80)
         .attr("filter", "brightness(0.3)");
 
       // 기존 hover 레이블 제거
@@ -280,27 +295,27 @@ const GraphVisualization = ({
       svg
         .selectAll(".node")
         .transition()
-        .duration(100)
+        .duration(80)
         .attr("opacity", nodeOpacity);
 
-      svg.selectAll("circle").transition().duration(100).attr("opacity", 1);
+      svg.selectAll("circle").transition().duration(80).attr("opacity", 1);
 
       svg
         .selectAll("text:not(.hover-label)")
         .transition()
-        .duration(100)
+        .duration(80)
         .style("opacity", 1);
 
       svg
         .selectAll(".edge-group")
         .transition()
-        .duration(100)
+        .duration(80)
         .style("opacity", 1);
 
       svg
         .select(".background image")
         .transition()
-        .duration(100)
+        .duration(80)
         .attr("filter", `brightness(${bright})`);
 
       // hover 레이블 및 관련 요소 제거
@@ -404,25 +419,24 @@ const GraphVisualization = ({
       const newEdge = {
         name: newName,
         properties: {
-          lineNo: edgeType,
+          line_no: edgeType,
         },
         source: processedNodes[0].name,
         target: processedNodes[1].name,
       };
 
+      setGraphData((prev) => ({
+        ...prev,
+        edges: [...prev.edges, newEdge],
+      }));
       setTimeout(() => {
-        setGraphData((prev) => ({
-          ...prev,
-          edges: [...prev.edges, newEdge],
-        }));
-
         setPendingSaveData({
           kind: "edge",
           name: newName,
           action: "add",
           data: newEdge,
         });
-      }, 100);
+      }, 50);
 
       // 상태 초기화
       finalizeConnection();
@@ -712,7 +726,10 @@ const GraphVisualization = ({
       .on("end", (event, d) => {
         selectNode(d);
         setIsResizing(false);
-        if (event.sourceEvent.type === "mouseup") {
+        if (
+          event.sourceEvent.type === "mouseup" &&
+          event.sourceEvent.detail === 1
+        ) {
           setPendingSaveData({
             kind: "node",
             name: d.name,
@@ -1042,7 +1059,7 @@ const GraphVisualization = ({
       svg
         .select(".background image")
         .transition()
-        .duration(100)
+        .duration(80)
         .attr("filter", "brightness(0.3)");
 
       // 텍스트는 항상 잘 보이게
@@ -1083,7 +1100,7 @@ const GraphVisualization = ({
       svg
         .select(".background image")
         .transition()
-        .duration(100)
+        .duration(80)
         .attr("filter", "brightness(0.3)");
 
       // 텍스트는 항상 잘 보이게
@@ -1105,7 +1122,7 @@ const GraphVisualization = ({
         svg
           .select(".background image")
           .transition()
-          .duration(100)
+          .duration(80)
           .attr("filter", `brightness(${bright})`);
       }
     });
@@ -1122,7 +1139,7 @@ const GraphVisualization = ({
         svg
           .select(".background image")
           .transition()
-          .duration(100)
+          .duration(80)
           .attr("filter", `brightness(${bright})`);
       }
     });
@@ -1319,7 +1336,7 @@ const GraphVisualization = ({
             nodes: updatedNodes,
             edges: updatedEdges,
           }));
-        }, 100);
+        }, 50);
         setSelectedNode(null);
       }
     }
@@ -1358,7 +1375,7 @@ const GraphVisualization = ({
             ...prevData,
             edges: updatedEdges,
           }));
-        }, 100);
+        }, 50);
 
         setSelectedEdge(null);
         setSelectedNode(null);
@@ -1466,25 +1483,25 @@ const GraphVisualization = ({
     const updateSelection = svg
       .selectAll(".node, circle, .edge-group, text")
       .transition()
-      .duration(100);
+      .duration(80);
 
     if (selectTool === "invisible") {
       updateSelection.style("opacity", 0).style("pointer-events", "none");
     } else if (selectTool === "visible") {
       // 최적화된 업데이트 로직
-      svg.selectAll("circle").transition().duration(100).style("opacity", 1);
+      svg.selectAll("circle").transition().duration(80).style("opacity", 1);
 
       svg
         .selectAll(".node")
         .transition()
-        .duration(100)
+        .duration(80)
         .style("opacity", nodeOpacity)
         .style("pointer-events", "auto");
 
       const otherElements = svg.selectAll(".edge-group, text");
       otherElements
         .transition()
-        .duration(100)
+        .duration(80)
         .style("opacity", 1)
         .style("pointer-events", "auto");
     }
