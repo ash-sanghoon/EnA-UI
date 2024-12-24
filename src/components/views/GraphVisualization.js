@@ -974,8 +974,10 @@ const GraphVisualization = ({
       .style("fill", "white")
       .call(nodeDrag);
 
-    // 크기 조절 핸들 추가
-    const handleSize = 15 / viewBox.scale;
+    const handleSize = Math.min(
+      12,
+      15 * (viewBox.width / 1500) * (viewBox.height / 1500) * viewBox.scale
+    );
     // eslint-disable-next-line
     const cornerHandles = nodeGroup
       .selectAll(".resize-handle")
@@ -1396,22 +1398,20 @@ const GraphVisualization = ({
     setIsPanning(true);
     setStartPoint({ x: event.clientX, y: event.clientY });
   };
-
   const handleMouseMove = useCallback(
     (event) => {
       if (!isPanning || selectTool === "drawing") return;
 
-      // Remove requestAnimationFrame since React's state updates are already batched
-      const dx = (event.clientX - startPoint.x) / viewBox.scale;
-      const dy = (event.clientY - startPoint.y) / viewBox.scale;
+      // 스케일 기반 민감도 설정
+      const sensitivity = 0.3 * viewBox.scale;
 
-      // Multiply by a sensitivity factor to increase movement
-      const sensitivity = 1.5; // Adjust this value to make movement faster/slower
+      const dx = (event.clientX - startPoint.x) / sensitivity;
+      const dy = (event.clientY - startPoint.y) / sensitivity;
 
       setViewBox((prev) => ({
         ...prev,
-        x: prev.x - dx * sensitivity,
-        y: prev.y - dy * sensitivity,
+        x: prev.x - dx,
+        y: prev.y - dy,
       }));
 
       setStartPoint({ x: event.clientX, y: event.clientY });
