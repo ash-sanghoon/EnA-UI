@@ -376,17 +376,28 @@ const UnrecognizedView = () => {
                     return acc;
                   }, {})
                 ).length
-              : Object.keys(
-                  graphData.edges.reduce((acc, { properties }) => {
-                    if (properties && properties.line_no) {
-                      acc[properties.line_no] =
-                        (acc[properties.line_no] || 0) + 1;
+              : (() => {
+                  const lineNoSet = new Set();
+
+                  // nodes의 line_no 추가
+                  graphData.nodes.forEach((node) => {
+                    if (node.properties && node.properties.line_no) {
+                      lineNoSet.add(node.properties.line_no);
                     }
-                    return acc;
-                  }, {})
-                ).length}
+                  });
+
+                  // edges의 line_no 추가
+                  graphData.edges.forEach((edge) => {
+                    if (edge.properties && edge.properties.line_no) {
+                      lineNoSet.add(edge.properties.line_no);
+                    }
+                  });
+
+                  return lineNoSet.size - 1; // 고유한 line_no의 개수 반환
+                })()}
             )
           </span>
+
           <button
             type="button"
             className="ml-auto p-1 text-sm text-gray-500 hover:bg-gray-200 transition-colors"
@@ -425,13 +436,18 @@ const UnrecognizedView = () => {
                   </li>
                 ))
             : Object.entries(
-                graphData.edges.reduce((acc, { properties }) => {
-                  if (properties && properties.line_no) {
-                    acc[properties.line_no] = (acc[properties.line_no] || 0) + 1;
-                  }
-                  return acc;
-                }, {})
+                [...graphData.nodes, ...graphData.edges].reduce(
+                  (acc, { properties }) => {
+                    if (properties && properties.line_no) {
+                      acc[properties.line_no] =
+                        (acc[properties.line_no] || 0) + 1;
+                    }
+                    return acc;
+                  },
+                  {}
+                )
               )
+                .filter(([line_no]) => line_no !== "null" && line_no !== null) // null이면 안나오게
                 .sort(([a], [b]) => a - b) // line_no 정렬 (오름차순)
                 .map(([line_no, count]) => (
                   <li
