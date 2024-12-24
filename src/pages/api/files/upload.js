@@ -44,9 +44,9 @@ apiRoute.post(async (req, res) => {
       });
     }
 
-    const response = await axios.post('http://localhost:8081/api/files/upload', formData, {
       // Spring Boot로 요청 전송
-//    const response = await axios.post('http://192.168.0.89:8080/api/files/upload', formData, {
+    const response = await axios.post('http://localhost:8081/api/files/upload', formData, {
+//  const response = await axios.post('http://192.168.0.89:8080/api/files/upload', formData, {
       headers: {
         ...formData.getHeaders(),
         // 필요하다면 추가 헤더 설정
