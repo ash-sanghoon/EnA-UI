@@ -51,6 +51,8 @@ const ProjectManagement = () => {
   };
 
   const handleDrawingClick = (drawing) => {
+    console.log("ASFDJSK");
+    console.log(drawing.uuid);
     navigate(`/unrecognized/${drawing.uuid}/0`); // run 분석 없는 이미지 활용?
   };
 
@@ -323,23 +325,14 @@ const ProjectManagement = () => {
                 <div className="col-span-2">
                   <h4 className="text-lg font-semibold mb-2 text-center">{drawing.name}</h4>
                   <br></br><br></br>
-                  <button
-                    className="px-4 py-1 text-sm font-medium text-white bg-blue-500 rounded hover:bg-blue-600 disabled:bg-blue-200 disabled:cursor-not-allowed"
-                    disabled={true}
-                  >
-                    모델실행
-                  </button><br></br>
-                  <button
-                    className="px-4 py-1 text-sm font-medium text-white bg-red-500 rounded hover:bg-red-600 disabled:bg-red-200 disabled:cursor-not-allowed"
-                    disabled={true}
-                  >
-                    도면삭제
-                  </button><br></br>
-                  <button
-                    className="px-4 py-1 text-sm font-medium text-white bg-green-500 rounded hover:bg-green-600 disabled:bg-green-200 disabled:cursor-not-allowed"
-                    disabled={true}
-                  >
-                    도면완료
+                  <button className="px-6 py-2.5 text-indigo-500 rounded-lg hover:bg-indigo-50 transition-colors">
+                  모델실행
+                  </button>
+                  <button className="px-6 py-2.5 text-red-500 rounded-lg hover:bg-red-50 transition-colors">
+                  도면삭제
+                  </button>
+                  <button className="px-6 py-2.5 text-green-500 rounded-lg hover:bg-green-50 transition-colors">
+                  도면완료
                   </button>
                 </div>
                 <div className="col-span-5">
@@ -383,10 +376,9 @@ const ProjectManagement = () => {
                   {selectedRuns[drawing.uuid] ? (
                     <div className="text-sm">
                       <div>Model: {selectedRuns[drawing.uuid].modelName}</div>
-                      <div>Instrument Found, Changed: {selectedRuns[drawing.uuid].instrumentFoundedCnt}, {selectedRuns[drawing.uuid].instrumentChangedCnt}</div>
-                      <div>Pipe Found, Changed : {selectedRuns[drawing.uuid].pipeFoundedCnt}, {selectedRuns[drawing.uuid].pipeFoundedCnt}</div>
-                      <div>validate graph : No</div>
-                      <div>unuse pipe, node : ?, ?</div>
+                      <div>Inst Error Rate: {selectedRuns[drawing.uuid].symbolChangedCount} / {selectedRuns[drawing.uuid].bboxFoundCount}</div>
+                      <div>Pipe Error Rate: {selectedRuns[drawing.uuid].connectChangedCount} / {selectedRuns[drawing.uuid].connectFoundCount}</div>
+                      <div>validation</div>
                     </div>
                   ) : (
                     <div className="text-gray-500 text-sm">Select a run to view details</div>

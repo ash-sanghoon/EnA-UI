@@ -15,7 +15,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 
-const Sidebar = () => {
+const Sidebar = ({ selectedProject }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isCompanyMenuOpen, setIsCompanyMenuOpen] = useState(true);
@@ -67,7 +67,7 @@ const Sidebar = () => {
         </div>
         {isCompanyMenuOpen && (
           <div className="mt-2 px-2 py-1 bg-purple-800 rounded text-sm truncate">
-            Saudi Aramco - Ras Tanura
+            {selectedProject}
           </div>
         )}
       </div>
