@@ -14,38 +14,67 @@ const EnhancedLabelSelector = ({
   const headerRef = useRef(null);
   const labelRefs = useRef({});
   const inputRef = useRef(null);
+  const propertyInputRef = useRef(null);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [tempSelectedValue, setTempSelectedValue] = useState(null);
+  const [newPropertyName, setNewPropertyName] = useState("");
+  const [isAddingProperty, setIsAddingProperty] = useState(false);
+  const [localPropertyOptions, setLocalPropertyOptions] = useState({});
   const [position, setPosition] = useState(() => {
     const savedPosition = localStorage.getItem("labelSelectorPosition");
-    return savedPosition ? JSON.parse(savedPosition) : { x: 10, y: 10 }; // 기본 위치 조정
+    return savedPosition ? JSON.parse(savedPosition) : { x: 10, y: 10 };
   });
 
   const [selectedProperty, setSelectedProperty] = useState(
-    selectedNode ? "label" : "lineNo"
+    selectedNode ? "label" : "line_no"
   );
 
   useEffect(() => {
-    // 컴포넌트가 마운트된 후에 input에 포커스를 줍니다.
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-    setSelectedProperty(selectedNode ? "label" : "lineNo");
-  }, [selectedNode, selectedEdge]);
+    if (isOpen) {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
 
-  const propertyOptions = useMemo(() => {
+      const selectedItem = selectedNode || selectedEdge;
+      if (selectedItem?.properties) {
+        const initialProperty = selectedEdge ? "line_no" : "label";
+        const initialValue = selectedItem.properties[initialProperty] || null;
+
+        setSelectedProperty(initialProperty);
+        setTempSelectedValue(initialValue);
+
+        if (initialValue && labelRefs.current[initialValue]) {
+          labelRefs.current[initialValue].scrollIntoView({
+            behavior: "auto",
+            block: "center",
+          });
+        }
+      }
+      setSearchTerm("");
+      setIsAddingProperty(false);
+      setNewPropertyName("");
+
+      // Initialize local property options
+      initializePropertyOptions();
+    }
+  }, [isOpen, selectedNode, selectedEdge]);
+
+  const initializePropertyOptions = () => {
     const selectedItem = selectedNode || selectedEdge;
     const items = selectedItem
       ? selectedNode
         ? graphData.nodes
         : graphData.edges
-      : graphData.nodes; // selectedItem이 없으면 기본적으로 nodes 사용
+      : graphData.nodes;
 
-    if (!selectedItem && items.length === 0) return {};
+    if (!selectedItem && items.length === 0) {
+      setLocalPropertyOptions({});
+      return;
+    }
 
     const properties = {};
 
-    // 먼저 선택된 아이템의 properties를 추가
     if (selectedItem && selectedItem.properties) {
       Object.entries(selectedItem.properties).forEach(([key, value]) => {
         if (!properties[key]) properties[key] = new Set();
@@ -53,7 +82,6 @@ const EnhancedLabelSelector = ({
       });
     }
 
-    // 그 다음 같은 타입의 다른 아이템들의 properties도 추가
     items.forEach((item) => {
       if (item.properties) {
         Object.entries(item.properties).forEach(([key, value]) => {
@@ -63,22 +91,24 @@ const EnhancedLabelSelector = ({
       }
     });
 
-    return Object.fromEntries(
-      Object.entries(properties).map(([key, values]) => [
-        key,
-        Array.from(values).filter(Boolean).sort(),
-      ])
+    setLocalPropertyOptions(
+      Object.fromEntries(
+        Object.entries(properties).map(([key, values]) => [
+          key,
+          Array.from(values).filter(Boolean).sort(),
+        ])
+      )
     );
-  }, [graphData, selectedNode, selectedEdge]);
+  };
 
   const filteredPropertyValues = useMemo(() => {
-    const values = propertyOptions[selectedProperty] || [];
+    const values = localPropertyOptions[selectedProperty] || [];
     if (!searchTerm) return values;
 
     return values.filter((value) =>
       value.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [propertyOptions, selectedProperty, searchTerm]);
+  }, [localPropertyOptions, selectedProperty, searchTerm]);
 
   const handleDragStop = (e, data) => {
     const newPosition = { x: data.x, y: data.y };
@@ -87,33 +117,72 @@ const EnhancedLabelSelector = ({
   };
 
   const handlePropertySelect = (propertyName) => {
+    const selectedItem = selectedNode || selectedEdge;
     setSelectedProperty(propertyName);
+    setTempSelectedValue(selectedItem?.properties?.[propertyName] || null);
     setSearchTerm("");
+    setIsAddingProperty(false);
+
+    if (
+      selectedItem?.properties?.[propertyName] &&
+      labelRefs.current[selectedItem.properties[propertyName]]
+    ) {
+      labelRefs.current[selectedItem.properties[propertyName]].scrollIntoView({
+        behavior: "auto",
+        block: "center",
+      });
+    }
+  };
+
+  const handleAddProperty = () => {
+    if (!newPropertyName.trim()) return;
+
+    // Add the new property to the selected item
+    const selectedItem = selectedNode || selectedEdge;
+    if (selectedItem) {
+      selectedItem.properties = {
+        ...selectedItem.properties,
+        [newPropertyName]: "",
+      };
+    }
+
+    // Update local property options
+    setLocalPropertyOptions((prev) => ({
+      ...prev,
+      [newPropertyName]: [],
+    }));
+
+    setSelectedProperty(newPropertyName);
+    setTempSelectedValue("");
+    setIsAddingProperty(false);
+    setNewPropertyName("");
+
+    // Focus search input
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 0);
   };
 
   const handleValueSelect = (value) => {
-    if (selectedNode) {
-      onLabelSelect(value, selectedNode, selectedProperty, "node");
-    } else if (selectedEdge) {
-      onLabelSelect(value, selectedEdge, selectedProperty, "edge");
-    } else {
-      onLabelSelect(value, selectedNode, selectedProperty);
-    }
-    onClose();
+    setTempSelectedValue(value);
   };
 
-  const handleAddNewValue = () => {
-    const newValue = searchTerm.trim();
-    if (!newValue) return;
+  const handleSave = () => {
+    const valueToSave = tempSelectedValue || searchTerm.trim();
+    if (!valueToSave) return;
 
     if (selectedNode) {
-      onLabelSelect(newValue, selectedNode, selectedProperty, "node");
+      onLabelSelect(valueToSave, selectedNode, selectedProperty, "node");
     } else if (selectedEdge) {
-      onLabelSelect(newValue, selectedEdge, selectedProperty, "edge");
+      onLabelSelect(valueToSave, selectedEdge, selectedProperty, "edge");
     } else {
-      onLabelSelect(newValue, selectedNode, selectedProperty);
+      onLabelSelect(valueToSave, selectedNode, selectedProperty);
     }
+
     setSearchTerm("");
+    setTempSelectedValue(null);
     onClose();
   };
 
@@ -124,38 +193,25 @@ const EnhancedLabelSelector = ({
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
-      e.preventDefault();
-      handleEnterPress();
+      if (isAddingProperty) {
+        handleAddProperty();
+      } else {
+        handleSave();
+      }
+    } else if (e.key === "Escape") {
+      if (isAddingProperty) {
+        setIsAddingProperty(false);
+        setNewPropertyName("");
+      } else {
+        onClose();
+      }
     }
-  };
-
-  const handleEnterPress = () => {
-    const newValue = searchTerm.trim();
-    if (!newValue) return;
-
-    if (
-      filteredPropertyValues.length === 1 &&
-      filteredPropertyValues[0].toLowerCase() === newValue.toLowerCase()
-    ) {
-      handleValueSelect(filteredPropertyValues[0]);
-    } else if (
-      filteredPropertyValues.length === 0 ||
-      !filteredPropertyValues.some(
-        (v) => v.toLowerCase() === newValue.toLowerCase()
-      )
-    ) {
-      handleValueSelect(newValue);
-    } else if (filteredPropertyValues.length > 0) {
-      handleValueSelect(filteredPropertyValues[0]);
-    }
-
-    setSearchTerm("");
   };
 
   if (!isOpen) return null;
 
   const selectedItem = selectedNode || selectedEdge;
-  const itemType = selectedNode ? "노드" : selectedEdge ? "엣지" : "노드"; // selectedItem이 없을 경우 기본적으로 "노드"로 설정
+  const itemType = selectedNode ? "노드" : selectedEdge ? "엣지" : "노드";
 
   return (
     <Draggable
@@ -170,8 +226,8 @@ const EnhancedLabelSelector = ({
         style={{
           width: "500px",
           height: "450px",
-          minWidth: "490px", // 최소 너비 고정
-          minHeight: "300px", // 최소 높이 고정
+          minWidth: "490px",
+          minHeight: "300px",
         }}
         onMouseLeave={() => {
           popupRef.current.style.opacity = "0.75";
@@ -195,9 +251,50 @@ const EnhancedLabelSelector = ({
 
         <div className="flex gap-3 p-4 h-full overflow-hidden">
           <div className="w-[160px] flex flex-col min-h-0">
-            <h3 className="text-xs font-semibold mb-1">속성 목록</h3>
+            <div className="flex justify-between items-center mb-1">
+              <h3 className="text-xs font-semibold">속성 목록</h3>
+              <button
+                onClick={() => {
+                  setIsAddingProperty(true);
+                  setTimeout(() => propertyInputRef.current?.focus(), 0);
+                }}
+                className="text-xs text-blue-500 hover:text-blue-600"
+              >
+                + 추가
+              </button>
+            </div>
             <div className="flex-1 overflow-y-auto border border-gray-200 rounded-md">
-              {Object.keys(propertyOptions).map((propertyName) => (
+              {isAddingProperty && (
+                <div className="p-2 border-b border-gray-100 bg-blue-50">
+                  <input
+                    ref={propertyInputRef}
+                    type="text"
+                    value={newPropertyName}
+                    onChange={(e) => setNewPropertyName(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="새 속성명 입력"
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="flex justify-end mt-1 space-x-1">
+                    <button
+                      onClick={handleAddProperty}
+                      className="px-2 py-1 text-xs bg-blue-500 text-white rounded-md"
+                    >
+                      추가
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsAddingProperty(false);
+                        setNewPropertyName("");
+                      }}
+                      className="px-2 py-1 text-xs bg-gray-500 text-white rounded-md"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              )}
+              {Object.keys(localPropertyOptions).map((propertyName) => (
                 <div
                   key={propertyName}
                   onClick={() => handlePropertySelect(propertyName)}
@@ -211,10 +308,16 @@ const EnhancedLabelSelector = ({
                     {propertyName}
                   </span>
                   <span
-                    className="text-gray-500 text-sm truncate max-w-[80px]"
-                    title={selectedItem?.properties?.[propertyName]}
+                    className="text-gray-500 text-sm truncate max-w-[100px]"
+                    title={
+                      propertyName === selectedProperty && tempSelectedValue
+                        ? tempSelectedValue
+                        : selectedItem?.properties?.[propertyName]
+                    }
                   >
-                    {selectedItem?.properties?.[propertyName]}
+                    {propertyName === selectedProperty && tempSelectedValue
+                      ? tempSelectedValue
+                      : selectedItem?.properties?.[propertyName]}
                   </span>
                 </div>
               ))}
@@ -242,7 +345,7 @@ const EnhancedLabelSelector = ({
                     ref={(el) => (labelRefs.current[value] = el)}
                     onClick={() => handleValueSelect(value)}
                     className={`p-2 cursor-pointer border-b border-gray-100 truncate ${
-                      value === selectedItem?.properties?.[selectedProperty]
+                      value === tempSelectedValue
                         ? "bg-blue-50"
                         : "bg-white hover:bg-gray-50"
                     }`}
@@ -255,7 +358,7 @@ const EnhancedLabelSelector = ({
                 <div className="p-2 text-center text-sm text-gray-500">
                   {searchTerm && (
                     <div
-                      onClick={handleAddNewValue}
+                      onClick={() => setTempSelectedValue(searchTerm.trim())}
                       className="text-blue-600 font-semibold cursor-pointer hover:text-blue-700"
                     >
                       "{searchTerm}" 값 추가
@@ -265,37 +368,18 @@ const EnhancedLabelSelector = ({
               )}
             </div>
             <div className="flex justify-between p-2">
-              {searchTerm ? (
-                <>
-                  <button
-                    onClick={handleAddNewValue}
-                    className="px-3 py-1 bg-blue-500 text-white rounded-md"
-                  >
-                    저장(Enter)
-                  </button>
-                  <button
-                    onClick={handleDeleteValue}
-                    className="px-3 py-1 bg-red-500 text-white rounded-md"
-                  >
-                    제거(Delete)
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={handleEnterPress}
-                    className="px-3 py-1 bg-blue-500 text-white rounded-md"
-                  >
-                    저장(Enter)
-                  </button>
-                  <button
-                    onClick={handleDeleteValue}
-                    className="px-3 py-1 bg-red-500 text-white rounded-md"
-                  >
-                    제거(Delete)
-                  </button>
-                </>
-              )}
+              <button
+                onClick={handleSave}
+                className="px-3 py-1 bg-blue-500 text-white rounded-md"
+              >
+                저장(Enter)
+              </button>
+              <button
+                onClick={handleDeleteValue}
+                className="px-3 py-1 bg-red-500 text-white rounded-md"
+              >
+                제거(Delete)
+              </button>
             </div>
           </div>
         </div>

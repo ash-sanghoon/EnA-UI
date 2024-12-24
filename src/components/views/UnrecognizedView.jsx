@@ -27,7 +27,7 @@ const UnrecognizedView = () => {
   const [bright, setBright] = useState(0.8);
   const [opacity, setOpacity] = useState(0.7);
   const [brightnessOpen, setBrightnessOpen] = useState(false);
-  const [isShowClassList, setIsShowClassList] = useState(false);
+  const [isShowClassList, setIsShowClassList] = useState(true);
   const [opacityOpen, setOpacityOpen] = useState(false);
   const sliderRef = useRef(null);
   const opacitySliderRef = useRef(null);
@@ -41,7 +41,7 @@ const UnrecognizedView = () => {
   const [rightPanelWidth, setRightPanelWidth] = useState(280);
   const [isResizing, setIsResizing] = useState(false);
 
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState([{ action: "action", data: "data" }]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [initState, setInitState] = useState(null);
 
@@ -365,7 +365,7 @@ const UnrecognizedView = () => {
         />
 
         <h2 className="text-lg font-semibold p-1 border-b border-gray-200 flex justify-start items-center">
-          {isShowClassList ? "클래스 목록" : "LineNo 목록"}
+          {isShowClassList ? "클래스 목록" : "line_no 목록"}
           <span className="text-sm text-gray-500 ml-2">
             (
             {isShowClassList
@@ -376,7 +376,15 @@ const UnrecognizedView = () => {
                     return acc;
                   }, {})
                 ).length
-              : graphData.nodes.length}
+              : Object.keys(
+                  graphData.edges.reduce((acc, { properties }) => {
+                    if (properties && properties.line_no) {
+                      acc[properties.line_no] =
+                        (acc[properties.line_no] || 0) + 1;
+                    }
+                    return acc;
+                  }, {})
+                ).length}
             )
           </span>
           <button
@@ -384,7 +392,7 @@ const UnrecognizedView = () => {
             className="ml-auto p-1 text-sm text-gray-500 hover:bg-gray-200 transition-colors"
             onClick={() => setIsShowClassList(!isShowClassList)}
           >
-            {isShowClassList ? "LineNo" : "Class"}
+            {isShowClassList ? "line_no" : "Class"}
           </button>
         </h2>
         <ul
@@ -418,29 +426,30 @@ const UnrecognizedView = () => {
                 ))
             : Object.entries(
                 graphData.edges.reduce((acc, { properties }) => {
-                  // properties와 lineNo가 모두 존재하는지 확인
-                  if (properties && properties.lineNo) {
-                    acc[properties.lineNo] = (acc[properties.lineNo] || 0) + 1;
+                  if (properties && properties.line_no) {
+                    acc[properties.line_no] = (acc[properties.line_no] || 0) + 1;
                   }
                   return acc;
                 }, {})
-              ).map(([lineNo, count]) => (
-                <li
-                  key={lineNo}
-                  className="flex items-center justify-between text-sm cursor-pointer hover:bg-gray-200 p-1.5"
-                  onMouseOver={() => setHoverClass(lineNo)}
-                >
-                  <span
-                    title={lineNo}
-                    className="truncate max-w-[calc(100%-3.5rem)]"
+              )
+                .sort(([a], [b]) => a - b) // line_no 정렬 (오름차순)
+                .map(([line_no, count]) => (
+                  <li
+                    key={line_no}
+                    className="flex items-center justify-between text-sm cursor-pointer hover:bg-gray-200 p-1.5"
+                    onMouseOver={() => setHoverClass(line_no)}
                   >
-                    {lineNo}
-                  </span>
-                  <span className="bg-purple-400 text-white px-2 rounded-full">
-                    {count}
-                  </span>
-                </li>
-              ))}
+                    <span
+                      title={line_no}
+                      className="truncate max-w-[calc(100%-3.5rem)]"
+                    >
+                      {line_no}
+                    </span>
+                    <span className="bg-purple-400 text-white px-2 rounded-full">
+                      {count}
+                    </span>
+                  </li>
+                ))}
         </ul>
       </div>
     </div>
