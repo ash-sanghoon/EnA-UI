@@ -61,16 +61,12 @@ const GraphVisualization = ({
     if (initState) {
       currentIndex += 1;
       initRef.current = _.cloneDeep(initState);
-      console.log(initRef.current);
       isFirstRender2.current = false;
     }
   }, [initState]);
 
   useEffect(() => {
-    console.log(initRef);
     if (!initRef.current) return;
-    console.log(history);
-    console.log(currentIndex);
     if (history.length > 0) {
       if (currentIndex === 0) {
         setGraphData(initRef.current);
@@ -83,7 +79,6 @@ const GraphVisualization = ({
 
   // handleHistoryChange 함수 수정
   const handleHistoryChange = (history, currentIndex) => {
-    console.log(graphData.nodes);
     const currentAction = history[currentIndex];
     if (!currentAction) return;
 
@@ -136,45 +131,45 @@ const GraphVisualization = ({
         push: saveData,
         origin: graphData,
       };
-      console.log(saveData.action, saveData.data, graphData);
+      console.log(saveData);
 
-      // 히스토리 업데이트 로직
-      setHistory((prev) => {
-        const safePrev = Array.isArray(prev) ? prev : [];
-        const newHistoryItem = _.cloneDeep({
-          action: saveData.action,
-          data: saveData.data,
-        });
+      // // 히스토리 업데이트 로직
+      // setHistory((prev) => {
+      //   const safePrev = Array.isArray(prev) ? prev : [];
+      //   const newHistoryItem = _.cloneDeep({
+      //     action: saveData.action,
+      //     data: saveData.data,
+      //   });
 
-        // currentIndex가 마지막이 아닌 경우의 처리
-        let updatedHistory =
-          currentIndex < safePrev.length - 1
-            ? [...safePrev.slice(0, currentIndex + 1), newHistoryItem]
-            : [...safePrev, newHistoryItem];
+      //   // currentIndex가 마지막이 아닌 경우의 처리
+      //   let updatedHistory =
+      //     currentIndex < safePrev.length - 1
+      //       ? [...safePrev.slice(0, currentIndex + 1), newHistoryItem]
+      //       : [...safePrev, newHistoryItem];
 
-        // 중복 제거 로직
-        const seen = new Set();
-        const uniqueHistory = updatedHistory.filter((item) => {
-          if (!item.action || !item.data) return false;
+      //   // 중복 제거 로직
+      //   const seen = new Set();
+      //   const uniqueHistory = updatedHistory.filter((item) => {
+      //     if (!item.action || !item.data) return false;
 
-          const key = JSON.stringify({ action: item.action, data: item.data });
-          if (seen.has(key)) return false;
+      //     const key = JSON.stringify({ action: item.action, data: item.data });
+      //     if (seen.has(key)) return false;
 
-          seen.add(key);
-          return true;
-        });
+      //     seen.add(key);
+      //     return true;
+      //   });
 
-        // currentIndex 조정이 필요한 경우
-        if (uniqueHistory.length !== updatedHistory.length) {
-          setTimeout(() => {
-            setCurrentIndex(Math.min(currentIndex, uniqueHistory.length - 1));
-          }, 0);
-        }
+      //   // currentIndex 조정이 필요한 경우
+      //   if (uniqueHistory.length !== updatedHistory.length) {
+      //     setTimeout(() => {
+      //       setCurrentIndex(Math.min(currentIndex, uniqueHistory.length - 1));
+      //     }, 0);
+      //   }
 
-        return uniqueHistory;
-      });
+      //   return uniqueHistory;
+      // });
 
-      setCurrentIndex((prev) => prev + 1);
+      // setCurrentIndex((prev) => prev + 1);
 
       try {
         setIsSaving(true);
@@ -190,93 +185,75 @@ const GraphVisualization = ({
       }
     };
 
-    // 첫 렌더링 체크
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      prevGraphDataRef.current = _.cloneDeep(graphData);
-      return;
-    }
-    let isGraphDataChanged;
-    // 깊은 복사본으로 비교
-    if (currentIndex === 0) {
-      isGraphDataChanged = !_.isEqual(
-        _.cloneDeep(initRef.current),
-        _.cloneDeep(graphData)
-      );
-    } else {
-      isGraphDataChanged = !_.isEqual(
-        _.cloneDeep(prevGraphDataRef.current),
-        _.cloneDeep(graphData)
-      );
-    }
-    if (isGraphDataChanged) {
-      save();
-      prevGraphDataRef.current = _.cloneDeep(graphData);
-    }
+    // let isGraphDataChanged;
+    // // 깊은 복사본으로 비교
+    // if (currentIndex === 0) {
+    //   isGraphDataChanged = !_.isEqual(
+    //     _.cloneDeep(initRef.current),
+    //     _.cloneDeep(graphData)
+    //   );
+    // } else {
+    //   isGraphDataChanged = !_.isEqual(
+    //     _.cloneDeep(prevGraphDataRef.current),
+    //     _.cloneDeep(graphData)
+    //   );
+    // }
+    // if (isGraphDataChanged) {
+    //   prevGraphDataRef.current = _.cloneDeep(graphData);
+    //   save();
+    // }
+    save();
   }, [saveData]);
-
   useEffect(() => {
     const svg = d3.select(svgRef.current);
 
     if (hoverClass !== null) {
-      // hoverClass와 일치하는 노드 찾기
+      // hoverClass와 일치하는 노드와 엣지 찾기
       const matchingNodes = graphData.nodes.filter(
-        (node) => node.properties.label === hoverClass
+        (node) =>
+          node.properties?.label === hoverClass ||
+          node.properties?.line_no === hoverClass
       );
-      const matchingNodeNames = matchingNodes.map((node) => node.name);
+      const matchingEdges = graphData.edges.filter(
+        (edge) => edge.properties?.line_no === hoverClass
+      );
 
-      // 노드 투명도 업데이트
+      // 노드 이름과 엣지의 source-target 쌍 수집
+      const matchingNodeNames = matchingNodes.map((node) => node.name);
+      const matchingEdgePairs = matchingEdges.map((edge) => ({
+        source: edge.source,
+        target: edge.target,
+      }));
+
       svg
-        .selectAll(".node")
+        .selectAll(".node, text, circle")
         .transition()
         .duration(80)
         .attr("opacity", (d) =>
-          matchingNodeNames.includes(d.name) ? nodeOpacity : 0.2
+          matchingNodeNames.includes(d?.name) ? 1 : 0.2
         );
 
-      // 원 투명도 업데이트
-      svg
-        .selectAll("circle")
-        .transition()
-        .duration(80)
-        .attr("opacity", (d) => (matchingNodeNames.includes(d.name) ? 1 : 0.2));
-
-      // 노드 텍스트 레이블 투명도 업데이트 (hover-label 제외)
-      svg
-        .selectAll("text:not(.hover-label)")
-        .transition()
-        .duration(80)
-        .style("opacity", (d) =>
-          matchingNodeNames.includes(d.name) ? 1 : 0.2
-        );
-
-      // 엣지 투명도 업데이트
+      // 엣지 강조 처리
       svg
         .selectAll(".edge-group")
         .transition()
         .duration(80)
-        .style("opacity", (d) =>
-          matchingNodeNames.includes(d.source) ||
-          matchingNodeNames.includes(d.target)
-            ? 1
-            : 0.2
-        );
+        .style("opacity", (d) => {
+          const isMatching = matchingEdgePairs.some(
+            (pair) =>
+              (pair.source === d.source && pair.target === d.target) ||
+              (pair.source === d.target && pair.target === d.source)
+          );
+          return isMatching ? 1 : 0.2;
+        });
 
-      // 배경 이미지 밝기 조정
-      svg
-        .select(".background image")
-        .transition()
-        .duration(80)
-        .attr("filter", "brightness(0.3)");
-
-      // 기존 hover 레이블 제거
+      // 기존 호버 레이블 제거
       svg.selectAll(".hover-label").remove();
 
-      // 일치하는 노드에 클래스 레이블 추가
+      // 일치하는 노드에 호버 레이블 추가
       matchingNodes.forEach((node) => {
         const topRight = [node.position[0][0], node.position[0][1]];
 
-        // 텍스트 레이블 추가
         svg
           .append("text")
           .attr("class", "hover-label")
@@ -290,21 +267,67 @@ const GraphVisualization = ({
           .attr("pointer-events", "none")
           .text(hoverClass);
       });
-    } else {
-      // hover 상태가 없을 때 모든 요소를 원래 상태로 복원
+
+      matchingEdges.forEach((edge) => {
+        const sourceNode = graphData.nodes.find((n) => n.name === edge.source);
+        const targetNode = graphData.nodes.find((n) => n.name === edge.target);
+
+        if (sourceNode && targetNode) {
+          // 모든 position 포인트들의 평균값으로 중심점 계산
+          const sourceMidX =
+            sourceNode.position.reduce((sum, pos) => sum + pos[0], 0) /
+            sourceNode.position.length;
+          const sourceMidY =
+            sourceNode.position.reduce((sum, pos) => sum + pos[1], 0) /
+            sourceNode.position.length;
+          const targetMidX =
+            targetNode.position.reduce((sum, pos) => sum + pos[0], 0) /
+            targetNode.position.length;
+          const targetMidY =
+            targetNode.position.reduce((sum, pos) => sum + pos[1], 0) /
+            targetNode.position.length;
+
+          const midX = (sourceMidX + targetMidX) / 2;
+          const midY = (sourceMidY + targetMidY) / 2;
+
+          // 노드들이 세로로 정렬되어 있는지 확인
+          const isVertical =
+            Math.abs(sourceMidX - targetMidX) <
+            Math.abs(sourceMidY - targetMidY);
+
+          const textElement = svg
+            .append("text")
+            .attr("class", "hover-label")
+            .attr("x", midX)
+            .attr("y", midY - 10)
+            .attr("text-anchor", "middle")
+            .attr("dominant-baseline", "central")
+            .attr("fill", "white")
+            .attr("font-weight", "bold")
+            .attr("font-size", `${Math.min(45, 45 / viewBox.scale)}px`)
+            .attr("pointer-events", "none")
+            .text(hoverClass);
+
+          if (isVertical) {
+            // 세로로 텍스트를 돌리기 위해 회전(transform 적용)
+            textElement.attr("transform", `rotate(-90, ${midX}, ${midY})`); // -90도 회전
+          }
+        }
+      });
+
+      // 배경 밝기 조정
       svg
-        .selectAll(".node")
+        .select(".background image")
+        .transition()
+        .duration(80)
+        .attr("filter", "brightness(0.3)");
+    } else {
+      // 호버가 없을 때 모든 요소를 원래 상태로 복원
+      svg
+        .selectAll(".node, text, circle")
         .transition()
         .duration(80)
         .attr("opacity", nodeOpacity);
-
-      svg.selectAll("circle").transition().duration(80).attr("opacity", 1);
-
-      svg
-        .selectAll("text:not(.hover-label)")
-        .transition()
-        .duration(80)
-        .style("opacity", 1);
 
       svg
         .selectAll(".edge-group")
@@ -312,23 +335,17 @@ const GraphVisualization = ({
         .duration(80)
         .style("opacity", 1);
 
+      // 호버 레이블 제거
+      svg.selectAll(".hover-label").remove();
+
+      // 배경 밝기 복원
       svg
         .select(".background image")
         .transition()
         .duration(80)
         .attr("filter", `brightness(${bright})`);
-
-      // hover 레이블 및 관련 요소 제거
-      svg.selectAll(".hover-label, .hover-label-bg").remove();
     }
-  }, [
-    hoverClass,
-    graphData.nodes,
-    graphData.edges,
-    bright,
-    nodeOpacity,
-    viewBox.scale,
-  ]);
+  }, [hoverClass, graphData.nodes, graphData.edges, viewBox.scale]);
 
   useEffect(() => {
     if (target && isConnecting) {
@@ -747,7 +764,7 @@ const GraphVisualization = ({
 
         const cornerIndex = d.cornerIndex;
         const currentPosition = [...d.position]; // 현재 좌표
-        const minSize = 20; // 최소 크기
+        const minSize = 10; // 최소 크기
 
         // 현재 좌표
         const [x1, y1] = currentPosition[0];
@@ -851,7 +868,7 @@ const GraphVisualization = ({
       .attr("orient", "auto")
       .append("path")
       .attr("d", "M 0 0 L 10 5 L 0 10 Z") // 삼각형 화살표
-      .attr("fill", "#333"); // 화살표 색상
+      .attr("fill", "#0078d4"); // 화살표 색상
 
     const edgeLines = edgeGroup
       .selectAll(".edge-group")
@@ -880,7 +897,7 @@ const GraphVisualization = ({
       .attr("y1", (d) => getEdgeCoordinates(d.source, d.target).y1)
       .attr("x2", (d) => getEdgeCoordinates(d.source, d.target).x2)
       .attr("y2", (d) => getEdgeCoordinates(d.source, d.target).y2)
-      .attr("stroke", "#333")
+      .attr("stroke", "#0078d4")
       .attr("stroke-width", 2)
       .style("cursor", "pointer")
       .attr("marker-end", "url(#arrowhead)");
@@ -1029,27 +1046,25 @@ const GraphVisualization = ({
         .attr("opacity", 1);
     };
 
-    rectangleNodes.on("mouseenter", function (event, d) {
+    // 공통 이벤트 핸들러 함수들
+    const handleNodeMouseEnter = (event, d) => {
       if ((isResizing && selectedNode !== d) || isResizing) {
         return;
       }
 
-      // 선택된 노드와 현재 hover된 노드를 제외한 모든 노드의 opacity 낮추기
+      // 노드 opacity 조정
       svg
         .selectAll(".node, circle, text")
         .filter((nodeData) => nodeData !== d && nodeData !== selectedNode)
         .attr("opacity", 0.2);
 
-      // 선택된 노드와 현재 hover된 노드는 원래 opacity 유지
       svg
         .selectAll(".node, circle")
         .filter((data) => data === d || data === selectedNode)
         .attr("opacity", 0.8);
 
-      // 엣지 opacity 조정
+      // 기타 요소 opacity 조정
       svg.selectAll(".edge-group").attr("opacity", 0.4);
-
-      // 현재 노드의 resize 핸들 표시
       svg
         .selectAll(".resize-handle")
         .filter((handle) => handle.nodeIndex === graphData.nodes.indexOf(d))
@@ -1062,87 +1077,79 @@ const GraphVisualization = ({
         .duration(80)
         .attr("filter", "brightness(0.3)");
 
-      // 텍스트는 항상 잘 보이게
+      // 텍스트 opacity
       svg
         .selectAll("text")
         .filter((data) => data === d || data === selectedNode)
         .attr("opacity", 1);
-    });
 
-    // circleNodes.on("mouseenter") 부분도 동일하게 수정
-    circleNodes.on("mouseenter", function (event, d) {
-      if ((isResizing && selectedNode !== d) || isResizing) {
-        return;
-      }
+      // 툴팁 생성
+      createTooltip(event, d);
+    };
 
-      // 선택된 노드와 현재 hover된 노드를 제외한 모든 노드의 opacity 낮추기
-      svg
-        .selectAll(".node, circle, text")
-        .filter((nodeData) => nodeData !== d && nodeData !== selectedNode)
-        .attr("opacity", 0.2);
-
-      // 선택된 노드와 현재 hover된 노드는 원래 opacity 유지
-      svg
-        .selectAll(".node, circle")
-        .filter((data) => data === d || data === selectedNode)
-        .attr("opacity", 0.8);
-
-      // 엣지 opacity 조정
-      svg.selectAll(".edge-group").attr("opacity", 0.4);
-
-      // 현재 노드의 resize 핸들 표시
-      svg
-        .selectAll(".resize-handle")
-        .filter((handle) => handle.nodeIndex === graphData.nodes.indexOf(d))
-        .attr("opacity", 1);
-
-      // 배경 이미지 어둡게
-      svg
-        .select(".background image")
-        .transition()
-        .duration(80)
-        .attr("filter", "brightness(0.3)");
-
-      // 텍스트는 항상 잘 보이게
-      svg
-        .selectAll("text")
-        .filter((data) => data === d || data === selectedNode)
-        .attr("opacity", 1);
-    });
-
-    rectangleNodes.on("mouseleave", function (event, d) {
+    const handleNodeMouseLeave = (event, d) => {
       if (!selectedNode || selectedNode !== d || isResizing) {
-        svg.selectAll(".node").attr("opacity", nodeOpacity); // node는 변수 사용
-        svg.selectAll(".circle, circle, .edge-group, text").attr("opacity", 1); // 다른 요소는 직접 값 설정
+        // opacity 초기화
+        svg.selectAll(".node").attr("opacity", nodeOpacity);
+        svg.selectAll(".circle, circle, .edge-group, text").attr("opacity", 1);
         svg
           .selectAll(".resize-handle")
           .filter((handle) => handle.nodeIndex === graphData.nodes.indexOf(d))
-          .attr("opacity", 0); // 숨김 상태는 0으로 설정
+          .attr("opacity", 0);
 
+        // 배경 밝기 복구
         svg
           .select(".background image")
           .transition()
           .duration(80)
           .attr("filter", `brightness(${bright})`);
       }
-    });
 
-    circleNodes.on("mouseleave", function (event, d) {
-      if (!selectedNode || selectedNode !== d || isResizing) {
-        svg.selectAll(".node").attr("opacity", nodeOpacity); // node는 변수 사용
-        svg.selectAll(".circle, circle, .edge-group, text").attr("opacity", 1); // 다른 요소는 직접 값 설정
-        svg
-          .selectAll(".resize-handle")
-          .filter((handle) => handle.nodeIndex === graphData.nodes.indexOf(d))
-          .attr("opacity", 0); // 숨김 상태는 0으로 설정
+      // 툴팁 제거
+      svg.selectAll(".tooltip").remove();
+    };
 
-        svg
-          .select(".background image")
-          .transition()
-          .duration(80)
-          .attr("filter", `brightness(${bright})`);
-      }
-    });
+    const createTooltip = (event, d) => {
+      const [mouseX, mouseY] = d3.pointer(event);
+      const tooltipGroup = svg
+        .append("g")
+        .attr("class", "tooltip")
+        .style("pointer-events", "none");
+
+      // 텍스트 요소 추가
+      const textElement = tooltipGroup
+        .append("text")
+        .attr("x", mouseX + 15)
+        .attr("y", mouseY + 25)
+        .text(d.properties.label)
+        .style("fill", "#ffffff")
+        .style("font-size", `${50 / viewBox.scale}px`)
+        .style("font-weight", "bold")
+        .style("font-family", "Arial, sans-serif")
+        .style("alignment-baseline", "middle");
+
+      // 텍스트 크기 측정 및 배경 추가
+      const textBBox = textElement.node().getBBox();
+      tooltipGroup
+        .insert("rect", "text")
+        .attr("x", textBBox.x - 10)
+        .attr("y", textBBox.y - 10)
+        .attr("width", textBBox.width + 20)
+        .attr("height", textBBox.height + 20)
+        .attr("rx", 12)
+        .attr("ry", 12)
+        .style("fill", "rgba(0, 0, 0, 0.7)")
+        .style("filter", "drop-shadow(2px 2px 6px rgba(0, 0, 0, 0.5))");
+    };
+
+    // 이벤트 리스너 설정
+    rectangleNodes
+      .on("mouseenter", handleNodeMouseEnter)
+      .on("mouseleave", handleNodeMouseLeave);
+
+    circleNodes
+      .on("mouseenter", handleNodeMouseEnter)
+      .on("mouseleave", handleNodeMouseLeave);
 
     cornerHandles.on("mouseenter", function (event, d) {
       if (isResizing) return;
@@ -1208,14 +1215,12 @@ const GraphVisualization = ({
   };
 
   const handleLabelSelect = (value, selectedItem, selectedProperty, type) => {
-    console.log(value, selectedItem, selectedProperty);
-
     if (type === "edge") {
       // 엣지 업데이트
       setGraphData((prev) => ({
         ...prev,
         edges: prev.edges.map((edge) =>
-          edge.id === selectedItem.id
+          edge.name === selectedItem.name
             ? {
                 ...edge,
                 properties: {
@@ -1510,63 +1515,97 @@ const GraphVisualization = ({
   useEffect(() => {
     const svg = d3.select(svgRef.current);
 
-    // 모든 엣지를 기본 상태로 초기화
-    svg.selectAll(".edge-group").each(function () {
-      const edgeGroup = d3.select(this);
-      edgeGroup
-        .select(".edge")
-        .attr("stroke-width", 2) // 기본 두께
-        .attr("opacity", 1); // 기본 투명도
-    });
-
-    // 선택된 엣지가 있으면 해당 엣지 강조
-    if (selectedEdge) {
+    // 엣지 스타일 설정을 위한 유틸리티 함수들
+    const resetAllEdges = () => {
       svg
-        .selectAll(".edge-group")
-        .filter(
-          (d) =>
-            d.source === selectedEdge.source && d.target === selectedEdge.target
-        )
-        .select(".edge")
-        .attr("stroke-width", 4) // 강조 두께
-        .attr("opacity", 1); // 강조 투명도
-    }
+        .selectAll(".edge-group .edge")
+        .attr("opacity", 1)
+        .attr("stroke-width", 2);
+    };
 
-    // 마우스 이벤트 추가
+    const highlightSelectedEdge = () => {
+      if (selectedEdge) {
+        svg
+          .selectAll(".edge-group")
+          .filter(
+            (d) =>
+              d.source === selectedEdge.source &&
+              d.target === selectedEdge.target
+          )
+          .select(".edge")
+          .attr("stroke-width", 4)
+          .attr("opacity", 1);
+      }
+    };
+
+    const dimAllEdges = () => {
+      svg.selectAll(".edge-group .edge").attr("opacity", 0.4);
+    };
+
+    const createEdgeTooltip = (event, d) => {
+      const [mouseX, mouseY] = d3.pointer(event);
+      const tooltipGroup = svg
+        .append("g")
+        .attr("class", "tooltip")
+        .style("pointer-events", "none");
+
+      // 툴팁 텍스트 (여기서 필요한 정보를 표시)
+      const tooltipText = d.properties?.line_no;
+      if (!tooltipText) return;
+      const textElement = tooltipGroup
+        .append("text")
+        .attr("x", mouseX + 15)
+        .attr("y", mouseY + 25)
+        .text(tooltipText)
+        .style("fill", "#ffffff")
+        .style("font-size", `${50 / viewBox.scale}px`)
+        .style("font-weight", "bold")
+        .style("font-family", "Arial, sans-serif")
+        .style("alignment-baseline", "middle");
+
+      // 배경 사각형 추가
+      const textBBox = textElement.node().getBBox();
+      tooltipGroup
+        .insert("rect", "text")
+        .attr("x", textBBox.x - 10)
+        .attr("y", textBBox.y - 10)
+        .attr("width", textBBox.width + 20)
+        .attr("height", textBBox.height + 20)
+        .attr("rx", 12)
+        .attr("ry", 12)
+        .style("fill", "rgba(0, 0, 0, 0.7)")
+        .style("filter", "drop-shadow(2px 2px 6px rgba(0, 0, 0, 0.5))");
+    };
+
+    const removeTooltip = () => {
+      svg.selectAll(".tooltip").remove();
+    };
+
+    // 초기 상태 설정
+    resetAllEdges();
+    highlightSelectedEdge();
+
+    // 마우스 이벤트 핸들러
+    const handleMouseEnter = (event, d) => {
+      dimAllEdges();
+      const currentEdge = d3.select(event.currentTarget).select(".edge");
+      currentEdge.attr("opacity", 1).attr("stroke-width", 4);
+      createEdgeTooltip(event, d);
+    };
+
+    const handleMouseLeave = () => {
+      resetAllEdges();
+      highlightSelectedEdge();
+      removeTooltip();
+    };
+
+    // 이벤트 리스너 설정
     svg
       .selectAll(".edge-group")
-      .on("mouseenter", function (event, d) {
-        const currentEdge = d3.select(this).select(".edge");
+      .on("mouseenter", handleMouseEnter)
+      .on("mouseleave", handleMouseLeave);
 
-        // 모든 엣지 투명도 낮추기
-        svg.selectAll(".edge-group .edge").attr("opacity", 0.3);
-
-        // 호버된 엣지의 스타일 복원
-        currentEdge.attr("opacity", 1).attr("stroke-width", 4);
-      })
-      .on("mouseleave", function () {
-        // 모든 엣지를 기본 상태로 복원
-        svg
-          .selectAll(".edge-group .edge")
-          .attr("opacity", 1)
-          .attr("stroke-width", 2);
-
-        // 선택된 엣지가 있으면 강조 상태 유지
-        if (selectedEdge) {
-          svg
-            .selectAll(".edge-group")
-            .filter(
-              (d) =>
-                d.source === selectedEdge.source &&
-                d.target === selectedEdge.target
-            )
-            .select(".edge")
-            .attr("stroke-width", 4)
-            .attr("opacity", 1);
-        }
-      });
-
-    // Cleanup 함수로 이벤트 제거
+    // Cleanup 함수
     return () => {
       svg
         .selectAll(".edge-group")
