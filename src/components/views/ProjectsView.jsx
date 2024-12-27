@@ -17,8 +17,8 @@ const AddDrawingModal = dynamic(() => import("../modals/AddDrawingModal"), {
   ssr: false,
 });
 
-import { useNavigate } from "react-router-dom";
-const ProjectsView = () => {
+import { useNavigate } from 'react-router-dom';
+const ProjectsView = ({ setSelectedProject }) => {
   const navigate = useNavigate();
   const [filters, setFilters] = useState({
     projectName: "",
@@ -35,12 +35,16 @@ const ProjectsView = () => {
     const { name, value } = e.target;
     setFilters({ ...filters, [name]: value });
   };
-
-  const handleNavigateToResults = (projectId) => {
+  const changeProjectName = (projectName1, projectId) => {
+    setSelectedProject(`${projectName1}`);
+  }
+  const handleNavigateToResults = (projectId, projectName1) => {
+    setSelectedProject(`${projectName1}`);
     navigate(`/results/${projectId}`);
   };
 
-  const handleNavigateToDetail = (projectId) => {
+  const handleNavigateToDetail = (projectId, projectName1) => {
+    setSelectedProject(`${projectName1}`);
     navigate(`/projectmanage/${projectId}`);
   };
 
@@ -71,7 +75,7 @@ const ProjectsView = () => {
   };
 
   return (
-    <div className="p-8 bg-gray-100 min-h-screen">
+    <div className="p-8 bg-white-100 /*min-h-screen*/">
       {/* 헤더 영역 */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">프로젝트 관리</h1>
@@ -195,7 +199,7 @@ const ProjectsView = () => {
           </thead>
           <tbody>
             {projects.map((project) => (
-              <tr key={project.projectUuid} className="hover:bg-gray-100">
+              <tr key={project.projectUuid} className="hover:bg-gray-100" onClick={() => changeProjectName(project.name, project.projectId)}>
                 <td className="border border-gray-300 px-4 py-2 text-center">
                   {project.name}
                 </td>
@@ -226,22 +230,16 @@ const ProjectsView = () => {
                 </td>
                 <td className="border border-gray-300 px-4 py-2">
                   <div className="flex justify-end space-x-2">
-                    <button
-                      className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleNavigateToDetail(project.uuid);
-                      }}
-                    >
+                    <button className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600" onClick={(e) => {
+                          e.stopPropagation();
+                          handleNavigateToDetail(project.uuid);
+                        }}>
                       상세
                     </button>
-                    <button
-                      className="px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleNavigateToResults(project.uuid);
-                      }}
-                    >
+                    <button className="px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600" onClick={(e) => {
+                          e.stopPropagation();
+                          handleNavigateToResults(project.uuid);
+                        }}>
                       결과
                     </button>
                   </div>

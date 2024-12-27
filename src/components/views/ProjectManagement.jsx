@@ -57,6 +57,8 @@ const ProjectManagement = () => {
   };
 
   const handleDrawingClick = (drawing) => {
+    console.log("ASFDJSK");
+    console.log(drawing.uuid);
     navigate(`/unrecognized/${drawing.uuid}/0`); // run 분석 없는 이미지 활용?
   };
 
@@ -412,18 +414,9 @@ const ProjectManagement = () => {
                   {selectedRuns[drawing.uuid] ? (
                     <div className="text-sm">
                       <div>Model: {selectedRuns[drawing.uuid].modelName}</div>
-                      <div>
-                        Instrument Found, Changed:{" "}
-                        {selectedRuns[drawing.uuid].instrumentFoundedCnt},{" "}
-                        {selectedRuns[drawing.uuid].instrumentChangedCnt}
-                      </div>
-                      <div>
-                        Pipe Found, Changed :{" "}
-                        {selectedRuns[drawing.uuid].pipeFoundedCnt},{" "}
-                        {selectedRuns[drawing.uuid].pipeFoundedCnt}
-                      </div>
-                      <div>validate graph : No</div>
-                      <div>unuse pipe, node : ?, ?</div>
+                      <div>Inst Error Rate: {selectedRuns[drawing.uuid].symbolChangedCount} / {selectedRuns[drawing.uuid].bboxFoundCount}</div>
+                      <div>Pipe Error Rate: {selectedRuns[drawing.uuid].connectChangedCount} / {selectedRuns[drawing.uuid].connectFoundCount}</div>
+                      <div>validation</div>
                     </div>
                   ) : (
                     <div className="text-gray-500 text-sm">
