@@ -117,6 +117,7 @@ const GraphVisualization = ({
   };
 
   useEffect(() => {
+    if (!pendingSaveData) return;
     if (pendingSaveData && !isPanning) {
       setSaveData(pendingSaveData);
       setPendingSaveData(null);
@@ -126,6 +127,7 @@ const GraphVisualization = ({
   const prevGraphDataRef = useRef([graphData]);
 
   useEffect(() => {
+    if (!saveData) return;
     const save = async () => {
       const requestData = {
         push: saveData,
@@ -397,7 +399,7 @@ const GraphVisualization = ({
         setTarget(null);
         setTarget2(null);
         setIsConnecting(false);
-        setSelectTool(null);
+        setSelectTool("hand");
         setSelectedNode(null);
       };
 
@@ -1123,7 +1125,7 @@ const GraphVisualization = ({
         .append("text")
         .attr("x", mouseX + 15)
         .attr("y", mouseY + 25)
-        .text(d.properties.label)
+        .text(`${d.properties.label}, ${d.properties.text}`)
         .style("fill", "#ffffff")
         .style("font-size", `${50 / viewBox.scale}px`)
         .style("font-weight", "bold")
@@ -1212,7 +1214,7 @@ const GraphVisualization = ({
       setIsDrawing(false); // 드로잉 종료
       document.removeEventListener("mousemove", draw); // 마우스 이벤트 리스너 제거
       setIsLabelPopupOpen(true); // 팝업 열기
-      setSelectTool(null);
+      setSelectTool("hand");
     }
   };
 
@@ -1391,7 +1393,7 @@ const GraphVisualization = ({
         return;
       }
     }
-    setSelectTool(null);
+    setSelectTool("hand");
   };
 
   const handleMouseDown = (event) => {
@@ -1480,6 +1482,7 @@ const GraphVisualization = ({
 
     if (selectTool === "remove") {
       handleRemoveNode();
+      setIsDrawing(false);
       setTarget(null);
     }
     const svg = d3.select(svgRef.current);
@@ -1490,9 +1493,11 @@ const GraphVisualization = ({
       .transition()
       .duration(80);
 
-    if (selectTool === "invisible") {
+    if (selectTool === "visible") {
+      setIsDrawing(false);
       updateSelection.style("opacity", 0).style("pointer-events", "none");
-    } else if (selectTool === "visible") {
+    } else if (selectTool !== "visible") {
+      setIsDrawing(false);
       // 최적화된 업데이트 로직
       svg.selectAll("circle").transition().duration(80).style("opacity", 1);
 
@@ -1510,7 +1515,7 @@ const GraphVisualization = ({
         .style("opacity", 1)
         .style("pointer-events", "auto");
     }
-  }, [selectTool, nodeOpacity]);
+  }, [selectTool]);
 
   useEffect(() => {
     const svg = d3.select(svgRef.current);
