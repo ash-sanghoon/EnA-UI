@@ -57,6 +57,7 @@ const ProjectsView = ({ setSelectedProject }) => {
       body: JSON.stringify(filters),
     });
     const data = await response.json();
+    if (data.includes("error")) return;
     setProjects(data);
     localStorage.setItem("searchData", JSON.stringify(data));
   };
