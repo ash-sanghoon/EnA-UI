@@ -619,6 +619,7 @@ const GraphVisualization = ({
 
     // 노드 이동 드래그 행동 생성
     let dragOffset = null; // 드래그 시작 시 노드와 마우스 간의 오프셋
+    let initialPosition = null;
 
     const nodeDrag = d3
       .drag()
@@ -639,24 +640,37 @@ const GraphVisualization = ({
             svgPoint.x - nodeTopLeft[0],
             svgPoint.y - nodeTopLeft[1],
           ];
+
+          // 초기 위치 저장
+          initialPosition = [...d.position];
         }
       })
       .on("end", (event, d) => {
         setIsResizing(false);
         draggedNodeRef.current = null;
         dragOffset = null; // 드래그 종료 시 초기화
-        if (
-          event.sourceEvent.type === "mouseup" &&
-          event.sourceEvent.detail === 1
-        ) {
-          selectNode(event, d);
-          setIsLabelPopupOpen(true);
+
+        // 위치 변화가 있는지 확인
+        const hasPositionChanged =
+          d.position[0] !== initialPosition[0] ||
+          d.position[1] !== initialPosition[1];
+
+        if (hasPositionChanged) {
           setPendingSaveData({
             kind: "node",
             name: d.name,
             action: "upd",
             data: d,
           });
+        }
+
+        // 클릭 이벤트 처리
+        if (
+          event.sourceEvent.type === "mouseup" &&
+          event.sourceEvent.detail === 1
+        ) {
+          selectNode(event, d);
+          setIsLabelPopupOpen(true);
         }
       })
       .on("drag", (event, d) => {
@@ -1131,8 +1145,7 @@ const GraphVisualization = ({
         .attr("x", mouseX + 15)
         .attr("y", mouseY + 25)
         .text(
-          `${d.properties.label}${
-            d.properties.text ? `, ${d.properties.text}` : ""
+          `${d.properties.label}${d.properties.text ? `, ${d.properties.text}` : ""
           }`
         )
         .style("fill", "#ffffff")
@@ -1235,12 +1248,12 @@ const GraphVisualization = ({
         edges: prev.edges.map((edge) =>
           edge.name === selectedItem.name
             ? {
-                ...edge,
-                properties: {
-                  ...edge.properties,
-                  [selectedProperty]: value, // 선택한 속성 업데이트
-                },
-              }
+              ...edge,
+              properties: {
+                ...edge.properties,
+                [selectedProperty]: value, // 선택한 속성 업데이트
+              },
+            }
             : edge
         ),
       }));
@@ -1263,12 +1276,12 @@ const GraphVisualization = ({
         nodes: prev.nodes.map((node) =>
           node.name === selectedItem.name
             ? {
-                ...node,
-                properties: {
-                  ...node.properties,
-                  [selectedProperty]: value, // 선택한 속성 업데이트
-                },
-              }
+              ...node,
+              properties: {
+                ...node.properties,
+                [selectedProperty]: value, // 선택한 속성 업데이트
+              },
+            }
             : node
         ),
       }));
@@ -1325,7 +1338,7 @@ const GraphVisualization = ({
     if (selectedNode) {
       const confirmDelete = window.confirm(
         "해당 노드와 연결된 모든 엣지가 삭제됩니다.\n" +
-          "계속 진행하시겠습니까?"
+        "계속 진행하시겠습니까?"
       );
 
       // 노드 삭제 로직
@@ -1670,10 +1683,10 @@ const GraphVisualization = ({
           cursor: isDrawing
             ? "crosshair"
             : isPanning
-            ? "grabbing"
-            : isConnecting
-            ? "pointer"
-            : "grab",
+              ? "grabbing"
+              : isConnecting
+                ? "pointer"
+                : "grab",
         }}
       >
         {rectangle && (
