@@ -884,20 +884,58 @@ const GraphVisualization = ({
       });
 
     // 화살표 그리기
+    const markerSize = Math.min(Math.max(5 / Math.sqrt(viewBox.scale), 3), 15);
     svg
       .append("defs")
       .append("marker")
       .attr("id", "arrowhead")
       .attr("viewBox", "0 0 10 10")
-      .attr("refX", 8) // 선 끝의 x 좌표 (조정 가능)
-      .attr("refY", 5) // 화살표의 중심
-      .attr("markerWidth", 5)
-      .attr("markerHeight", 5)
+      .attr("refX", 5) // refX 값을 10으로 변경하여 화살표를 선과 떨어뜨림
+      .attr("refY", 5)
+      .attr("markerWidth", markerSize)
+      .attr("markerHeight", markerSize)
       .attr("orient", "auto")
       .append("path")
-      .attr("d", "M 0 0 L 10 5 L 0 10 Z") // 삼각형 화살표
-      .attr("fill", "#0078d4"); // 화살표 색상
+      .attr("d", "M 0 0 L 10 5 L 0 10 Z")
+      .attr("fill", "#0078d4");
 
+    // 엣지 데이터로부터 양방향 여부를 확인하는 함수
+    function isBidirectional(edges, source, target) {
+      return edges.some((e) => e.source === target && e.target === source);
+    }
+
+    // 오프셋된 경로를 생성하는 함수
+    function createCurvedPath(d, isReverse = false) {
+      const sourceX = getEdgeCoordinates(d.source, d.target).x1;
+      const sourceY = getEdgeCoordinates(d.source, d.target).y1;
+      const targetX = getEdgeCoordinates(d.source, d.target).x2;
+      const targetY = getEdgeCoordinates(d.source, d.target).y2;
+
+      // 두 점을 이은 선분에 수직인 방향 계산
+      const dx = targetX - sourceX;
+      const dy = targetY - sourceY;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      const nx = -dy / len;
+      const ny = dx / len;
+
+      // 오프셋 거리 (엣지 간격)
+      const offset = 3;
+
+      // 시작점과 끝점을 오프셋
+      const offsetX = nx * offset * (isReverse ? -1 : 1);
+      const offsetY = ny * offset * (isReverse ? -1 : 1);
+
+      // 중간점 계산 (곡률 추가)
+      const midX = (sourceX + targetX) / 2 + offsetX * 5; // 곡률을 조정하는 부분
+      const midY = (sourceY + targetY) / 2 + offsetY * 5;
+
+      // Quadratic Bezier Curve를 사용해 곡선을 생성
+      return `M ${sourceX + offsetX} ${sourceY + offsetY} Q ${midX} ${midY} ${
+      targetX + offsetX
+      } ${targetY + offsetY}`;
+    }
+
+    // 엣지 그룹 생성 및 데이터 바인딩
     const edgeLines = edgeGroup
       .selectAll(".edge-group")
       .data(graphData.edges)
@@ -907,40 +945,54 @@ const GraphVisualization = ({
 
     // 클릭 가능한 넓은 영역 (투명)
     edgeLines
-      .append("line")
+      .append("path")
       .attr("class", "edge-hit-area")
-      .attr("x1", (d) => getEdgeCoordinates(d.source, d.target).x1)
-      .attr("y1", (d) => getEdgeCoordinates(d.source, d.target).y1)
-      .attr("x2", (d) => getEdgeCoordinates(d.source, d.target).x2)
-      .attr("y2", (d) => getEdgeCoordinates(d.source, d.target).y2)
+      .attr("d", (d) => {
+      const isBi = isBidirectional(graphData.edges, d.source, d.target);
+      if (isBi) {
+        return createCurvedPath(d);
+      }
+      return `M ${getEdgeCoordinates(d.source, d.target).x1} ${
+        getEdgeCoordinates(d.source, d.target).y1
+      } 
+        L ${getEdgeCoordinates(d.source, d.target).x2} ${
+        getEdgeCoordinates(d.source, d.target).y2
+      }`;
+      })
       .attr("stroke", "transparent")
-      .attr("stroke-width", 20) // 넓은 클릭 영역
+      .attr("stroke-width", 20)
+      .attr("fill", "none")
       .style("cursor", "pointer");
 
     // 실제 표시되는 엣지 라인
     edgeLines
-      .append("line")
+      .append("path")
       .attr("class", "edge")
-      .attr("x1", (d) => getEdgeCoordinates(d.source, d.target).x1)
-      .attr("y1", (d) => getEdgeCoordinates(d.source, d.target).y1)
-      .attr("x2", (d) => getEdgeCoordinates(d.source, d.target).x2)
-      .attr("y2", (d) => getEdgeCoordinates(d.source, d.target).y2)
+      .attr("d", (d) => {
+      const isBi = isBidirectional(graphData.edges, d.source, d.target);
+      if (isBi) {
+        return createCurvedPath(d);
+      }
+      return `M
+          getEdgeCoordinates(d.source, d.target).y1
+        } 
+            L ${getEdgeCoordinates(d.source, d.target).x2} ${
+          getEdgeCoordinates(d.source, d.target).y2
+        }`;
+      })
       .attr("stroke", "#0078d4")
       .attr("stroke-width", 2)
+      .attr("fill", "none")
       .style("cursor", "pointer")
       .attr("marker-end", "url(#arrowhead)");
 
-    // 엣지 클릭 이벤트 추가 (투명 히트 영역에 이벤트 바인딩)
-    edgeLines.select(".edge-hit-area,line").on("click", (event, edge) => {
-      event.stopPropagation(); // 부모 요소로의 이벤트 전파 중지
+    // 엣지 클릭 이벤트
+    edgeLines.select(".edge-hit-area").on("click", (event, edge) => {
+      event.stopPropagation();
       setSelectedEdge(edge);
       setIsLabelPopupOpen(true);
       setSelectedSymbol(true);
-
-      // 노드 선택 해제
       setSelectedNode(null);
-
-      // 모든 리사이즈 핸들 숨기기
       svg.selectAll(".resize-handle").attr("opacity", 0);
     });
 
