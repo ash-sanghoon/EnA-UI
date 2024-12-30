@@ -898,42 +898,42 @@ const GraphVisualization = ({
       .append("path")
       .attr("d", "M 0 0 L 10 5 L 0 10 Z")
       .attr("fill", "#0078d4");
+      // 엣지 데이터로부터 양방향 여부를 확인하는 함수
+      const isBidirectional = (edges, source, target) =>
+        edges.some((e) => e.source === target && e.target === source);
 
-    // 엣지 데이터로부터 양방향 여부를 확인하는 함수
-    function isBidirectional(edges, source, target) {
-      return edges.some((e) => e.source === target && e.target === source);
-    }
+      // 오프셋된 경로를 생성하는 함수
+      const createCurvedPath = (d, isReverse = false) => {
+        const { x1: sourceX, y1: sourceY, x2: targetX, y2: targetY } = getEdgeCoordinates(d.source, d.target);
 
-    // 오프셋된 경로를 생성하는 함수
-    function createCurvedPath(d, isReverse = false) {
-      const sourceX = getEdgeCoordinates(d.source, d.target).x1;
-      const sourceY = getEdgeCoordinates(d.source, d.target).y1;
-      const targetX = getEdgeCoordinates(d.source, d.target).x2;
-      const targetY = getEdgeCoordinates(d.source, d.target).y2;
+        // 두 점을 이은 선분에 수직인 방향 계산
+        const dx = targetX - sourceX;
+        const dy = targetY - sourceY;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const nx = -dy / len;
+        const ny = dx / len;
 
-      // 두 점을 이은 선분에 수직인 방향 계산
-      const dx = targetX - sourceX;
-      const dy = targetY - sourceY;
-      const len = Math.sqrt(dx * dx + dy * dy);
-      const nx = -dy / len;
-      const ny = dx / len;
+        // 오프셋 거리 (엣지 간격)
+        const offset = 3;
 
-      // 오프셋 거리 (엣지 간격)
-      const offset = 3;
+        // 시작점과 끝점을 오프셋
+        const offsetX = nx * offset * (isReverse ? -1 : 1);
+        const offsetY = ny * offset * (isReverse ? -1 : 1);
 
-      // 시작점과 끝점을 오프셋
-      const offsetX = nx * offset * (isReverse ? -1 : 1);
-      const offsetY = ny * offset * (isReverse ? -1 : 1);
+        // 중간점 계산 (곡률 추가)
+        const midX = (sourceX + targetX) / 2 + offsetX * 4; // 곡률을 조정하는 부분
+        const midY = (sourceY + targetY) / 2 + offsetY * 4;
 
-      // 중간점 계산 (곡률 추가)
-      const midX = (sourceX + targetX) / 2 + offsetX * 4; // 곡률을 조정하는 부분
-      const midY = (sourceY + targetY) / 2 + offsetY * 4;
+        // Quadratic Bezier Curve를 사용해 곡선을 생성
+        return `M ${sourceX + offsetX} ${sourceY + offsetY} Q ${midX} ${midY} ${targetX + offsetX} ${targetY + offsetY}`;
+      };
 
-      // Quadratic Bezier Curve를 사용해 곡선을 생성
-      return `M ${sourceX + offsetX} ${sourceY + offsetY} Q ${midX} ${midY} ${
-        targetX + offsetX
-      } ${targetY + offsetY}`;
-    }
+      // 직선 경로를 생성하는 함수 (단방향 엣지를 위한)
+      const createStraightPath = (d) => {
+        const { x1: sourceX, y1: sourceY, x2: targetX, y2: targetY } = getEdgeCoordinates(d.source, d.target);
+
+        return `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
+      };
 
     // 엣지 그룹 생성 및 데이터 바인딩
     const edgeLines = edgeGroup
@@ -949,15 +949,8 @@ const GraphVisualization = ({
       .attr("class", "edge-hit-area")
       .attr("d", (d) => {
         const isBi = isBidirectional(graphData.edges, d.source, d.target);
-        if (isBi) {
-          return createCurvedPath(d);
-        }
-        return `M ${getEdgeCoordinates(d.source, d.target).x1} ${
-          getEdgeCoordinates(d.source, d.target).y1
-        } 
-        L ${getEdgeCoordinates(d.source, d.target).x2} ${
-          getEdgeCoordinates(d.source, d.target).y2
-        }`;
+        // 양방향 엣지인 경우만 곡선 경로를 사용하고, 단방향은 직선 경로
+        return isBi ? createCurvedPath(d) : createStraightPath(d);
       })
       .attr("stroke", "transparent")
       .attr("stroke-width", 20)
@@ -970,15 +963,8 @@ const GraphVisualization = ({
       .attr("class", "edge")
       .attr("d", (d) => {
         const isBi = isBidirectional(graphData.edges, d.source, d.target);
-        if (isBi) {
-          return createCurvedPath(d);
-        }
-        return `M
-          getEdgeCoordinates(d.source, d.target).y1
-        } 
-            L ${getEdgeCoordinates(d.source, d.target).x2} ${
-          getEdgeCoordinates(d.source, d.target).y2
-        }`;
+        // 양방향 엣지인 경우만 곡선 경로를 사용하고, 단방향은 직선 경로
+        return isBi ? createCurvedPath(d) : createStraightPath(d);
       })
       .attr("stroke", "#0078d4")
       .attr("stroke-width", 2)
