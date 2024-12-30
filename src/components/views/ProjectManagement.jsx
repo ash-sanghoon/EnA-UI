@@ -1,17 +1,15 @@
-// Import necessary libraries
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { X, Upload, Underline } from "lucide-react";
 import axios from "axios";
-import { useParams } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
-import { TiEdit } from "react-icons/ti";
-import ThumbnailSelect from "../common/ThumbnailSelect";
+import { useParams, useNavigate } from "react-router-dom";
 import { TiEdit } from "react-icons/ti";
 import ThumbnailSelect from "../common/ThumbnailSelect";
 
 const ProjectManagement = () => {
-  const saveTimer = useRef(null);  // 여기에 추가
-  const saveTimer = useRef(null);  // 여기에 추가
+  // 저장 타이머 ref 선언
+  const saveTimer = useRef(null);
+
+  // 프로젝트 상태 관리
   const [project, setProject] = useState({
     uuid: "",
     country: "",
@@ -20,167 +18,94 @@ const ProjectManagement = () => {
     project_name: "",
     line_no_pattern: "",
     drawing_no_pattern: "",
-    project_name: "",
-    line_no_pattern: "",
-    drawing_no_pattern: "",
     files: [],
     drawings: [],
   });
+
+  // 선택된 실행 기록 상태 관리
   const [selectedRuns, setSelectedRuns] = useState({});
   const { projectId } = useParams();
   const navigate = useNavigate();
 
+  // 프로젝트 정보 입력 처리
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    // 상태를 업데이트
     setProject((prev) => ({
       ...prev,
-      [name]: value, // 입력된 필드 값 업데이트
+      [name]: value,
     }));
   };
 
+  // 도면 번호 변경 처리
   const handleDrawingNoChange = (drawing_uuid, value) => {
-    // project 상태 업데이트
-    setProject(prevProject => {
-      // drawings 배열에서 해당 uuid를 가진 도면을 찾아 drawingNo 업데이트
-      const updatedDrawings = prevProject.drawings.map(drawing => {
+    setProject((prevProject) => {
+      const updatedDrawings = prevProject.drawings.map((drawing) => {
         if (drawing.uuid === drawing_uuid) {
           return {
             ...drawing,
-            drawingNo: value
+            drawingNo: value,
           };
         }
         return drawing;
       });
-  
-      // 새로운 project 상태 반환
-      return {
-        ...prevProject,
-        drawings: updatedDrawings
-      };
-    });
-  
-    // 디바운스 처리를 위한 타이머 설정
-    if (saveTimer.current) {
-      clearTimeout(saveTimer.current);
-    }
-    
-    // 500ms 후에 저장 실행
-    saveTimer.current = setTimeout(() => {
-      handleProjectSave();
-    }, 500);
-  };
-  
-  const handleSheetNoChange = (drawing_uuid, value) => {
-    // project 상태 업데이트
-    setProject(prevProject => {
-      // drawings 배열에서 해당 uuid를 가진 도면을 찾아 sheetNo 업데이트
-      const updatedDrawings = prevProject.drawings.map(drawing => {
-        if (drawing.uuid === drawing_uuid) {
-          return {
-            ...drawing,
-            sheetNo: value
-          };
-        }
-        return drawing;
-      });
-  
-      // 새로운 project 상태 반환
-      return {
-        ...prevProject,
-        drawings: updatedDrawings
-      };
-    });
-  
-    // 디바운스 처리를 위한 타이머 설정
-    if (saveTimer.current) {
-      clearTimeout(saveTimer.current);
-    }
-    
-    // 500ms 후에 저장 실행
-    saveTimer.current = setTimeout(() => {
-      handleProjectSave();
-    }, 500);
-  };
-  
 
-  const handleDrawingNoChange = (drawing_uuid, value) => {
-    // project 상태 업데이트
-    setProject(prevProject => {
-      // drawings 배열에서 해당 uuid를 가진 도면을 찾아 drawingNo 업데이트
-      const updatedDrawings = prevProject.drawings.map(drawing => {
-        if (drawing.uuid === drawing_uuid) {
-          return {
-            ...drawing,
-            drawingNo: value
-          };
-        }
-        return drawing;
-      });
-  
-      // 새로운 project 상태 반환
       return {
         ...prevProject,
-        drawings: updatedDrawings
+        drawings: updatedDrawings,
       };
     });
-  
-    // 디바운스 처리를 위한 타이머 설정
+
+    // 디바운스 처리
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
     }
-    
-    // 500ms 후에 저장 실행
+
     saveTimer.current = setTimeout(() => {
       handleProjectSave();
     }, 500);
   };
-  
+
+  // 시트 번호 변경 처리
   const handleSheetNoChange = (drawing_uuid, value) => {
-    // project 상태 업데이트
-    setProject(prevProject => {
-      // drawings 배열에서 해당 uuid를 가진 도면을 찾아 sheetNo 업데이트
-      const updatedDrawings = prevProject.drawings.map(drawing => {
+    setProject((prevProject) => {
+      const updatedDrawings = prevProject.drawings.map((drawing) => {
         if (drawing.uuid === drawing_uuid) {
           return {
             ...drawing,
-            sheetNo: value
+            sheetNo: value,
           };
         }
         return drawing;
       });
-  
-      // 새로운 project 상태 반환
+
       return {
         ...prevProject,
-        drawings: updatedDrawings
+        drawings: updatedDrawings,
       };
     });
-  
-    // 디바운스 처리를 위한 타이머 설정
+
+    // 디바운스 처리
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
     }
-    
-    // 500ms 후에 저장 실행
+
     saveTimer.current = setTimeout(() => {
       handleProjectSave();
     }, 500);
   };
-  
+
   // 초기 데이터 로드
   useEffect(() => {
     fetchProjectDetails();
   }, [projectId]);
 
-  // 프로젝트 정보 조회 함수
+  // 프로젝트 정보 조회
   const fetchProjectDetails = async () => {
     try {
       const response = await axios.get(`/api/project/detail/${projectId}`);
       setProject(response.data);
 
-      // 추가 로직: drawings 데이터 초기화
+      // 도면 실행 기록 초기화
       const initialRuns = {};
       response.data.drawings.forEach((drawing) => {
         if (drawing.runs.length > 0) {
@@ -194,33 +119,32 @@ const ProjectManagement = () => {
     }
   };
 
+  // 도면 클릭 처리
   const handleDrawingClick = (drawing) => {
-    console.log(drawing.uuid);
-    navigate(`/unrecognized/${drawing.uuid}/0`); // run 분석 없는 이미지 활용?
+    navigate(`/unrecognized/${drawing.uuid}/0`);
   };
 
+  // 도면 실행 기록 클릭 처리
   const handleDrawingRunClick = (drawing, run) => {
     navigate(`/unrecognized/${drawing.uuid}/${run.uuid}`);
   };
 
-  // Handle run click
-  const handleRunClick = (drawing_uuid, run) => {
+  // 실행 기록 선택 처리
   const handleRunClick = (drawing_uuid, run) => {
     setSelectedRuns((prev) => ({
       ...prev,
-      [drawing_uuid]: run,
       [drawing_uuid]: run,
     }));
   };
 
   const formDataRef = useRef(project);
 
-  // useEffect로 value 업데이트 시 ref도 업데이트
+  // project 상태 변경 시 ref 업데이트
   useEffect(() => {
     formDataRef.current = project;
   }, [project]);
 
-  // Delete file handler
+  // 파일 삭제 처리
   const deleteFile = async (fileUuid) => {
     try {
       await axios.delete(`/api/files/delete/${fileUuid}`);
@@ -229,10 +153,11 @@ const ProjectManagement = () => {
         files: project.files.filter((file) => file.uuid !== fileUuid),
       });
     } catch (error) {
-      console.error("Failed to delete file:", error);
+      console.error("파일 삭제 실패:", error);
     }
   };
 
+  // 파일 관련 상태 관리
   const [files, setFiles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDisabled, setIsDisabled] = useState(true);
@@ -240,6 +165,7 @@ const ProjectManagement = () => {
 
   const dragRef = useRef(null);
 
+  // 파일 변경 처리
   const handleFileChange = useCallback(
     async (e) => {
       let selectFiles = [];
@@ -263,7 +189,7 @@ const ProjectManagement = () => {
           },
         });
 
-        // 응답으로 받은 파일 UUID 정보 저장
+        // 업로드된 파일 정보 저장
         const uploadedFileUuids = response.data.map((fileInfo) => ({
           fileName: fileInfo.fileName,
           uuid: fileInfo.uuid,
@@ -274,40 +200,33 @@ const ProjectManagement = () => {
           files: [...prevProject.files, ...uploadedFileUuids],
         }));
 
-        // 기존 files 상태에 새로운 파일 UUID 추가
         setFiles((prevFiles) => [...prevFiles, ...uploadedFileUuids]);
       } catch (error) {
         console.error("파일 업로드 중 오류 발생:", error);
-        // 필요한 경우 사용자에게 오류 표시
       }
     },
     [setFiles]
-  ); // setFiles를 의존성 배열에 추가
+  );
 
+  // 프로젝트 저장 처리
   const handleProjectSave = async () => {
     setIsLoading(true);
     try {
-      if(project.drawing_no_pattern === ""){
+      if (project.drawing_no_pattern === "") {
         alert("도면번호 유형을 선택해주세요");
         return;
       }
-      if(project.drawing_no_pattern === ""){
-        alert("도면번호 유형을 선택해주세요");
-        return;
-      }
+
       // API 호출
       const response = await axios.post("/api/project/save", project);
 
-      // 성공 처리
       if (response.status === 200) {
         alert("프로젝트가 성공적으로 저장되었습니다!");
-        // 저장 후 프로젝트 정보를 다시 조회
         await fetchProjectDetails();
       } else {
         alert("프로젝트 저장 중 문제가 발생했습니다.");
       }
     } catch (error) {
-      // 에러 처리
       console.error("프로젝트 저장 오류:", error);
       alert("프로젝트 저장 중 오류가 발생했습니다.");
     } finally {
@@ -402,7 +321,7 @@ const ProjectManagement = () => {
                 </label>
               </div>
               <div className="col-span-7">
-              <input
+                <input
                   type="text"
                   name="line_no_pattern"
                   value={project.line_no_pattern}
@@ -412,7 +331,6 @@ const ProjectManagement = () => {
                   required
                 />
               </div>
-
 
               <div className="col-span-1 flex justify-end items-center">
                 <label className="block text-base font-semibold text-gray-700 mb-1">
@@ -445,8 +363,6 @@ const ProjectManagement = () => {
                 />
               </div>
 
-
-
               <div className="col-span-1 flex justify-end items-center">
                 <label className="block text-base font-semibold text-gray-700 mb-1">
                   {" "}
@@ -458,7 +374,6 @@ const ProjectManagement = () => {
                   {project.last_update_date}
                 </p>
               </div>
-
             </div>
           </div>
 
@@ -532,7 +447,9 @@ const ProjectManagement = () => {
                     className="bg-transparent border-none w-32 text-right outline-none"
                     defaultValue={drawing.drawing_no}
                     maxLength={10}
-                    onChange={(e) => handleDrawingNoChange(drawing.uuid, e.target.value)}
+                    onChange={(e) =>
+                      handleDrawingNoChange(drawing.uuid, e.target.value)
+                    }
                   />
                   &nbsp;-&nbsp;
                   <input
@@ -540,24 +457,20 @@ const ProjectManagement = () => {
                     className="bg-transparent border-none w-12 text-left outline-none"
                     defaultValue={drawing.sheet_no}
                     maxLength={4}
-                    onChange={(e) => handleSheetNoChange(drawing.uuid, e.target.value)}
+                    onChange={(e) =>
+                      handleSheetNoChange(drawing.uuid, e.target.value)
+                    }
                   />
                   <TiEdit />
                 </h4>
                 <div className="flex space-x-2">
-                  <button
-                    className="px-4 py-1 text-sm font-medium text-[#6A5ACD] border border-[#6A5ACD] rounded hover:border-[#7A6EDF] hover:bg-[#F0F0FF] disabled:border-[#CDC1FF] disabled:cursor-not-allowed"
-                  >
+                  <button className="px-4 py-1 text-sm font-medium text-[#6A5ACD] border border-[#6A5ACD] rounded hover:border-[#7A6EDF] hover:bg-[#F0F0FF] disabled:border-[#CDC1FF] disabled:cursor-not-allowed">
                     모델실행
                   </button>
-                  <button
-                    className="px-4 py-1 text-sm font-medium text-[#7E60BF] border border-[#7E60BF] rounded hover:border-red-600 hover:bg-red-100 disabled:border-[#CDC1FF] disabled:cursor-not-allowed"
-                  >
+                  <button className="px-4 py-1 text-sm font-medium text-[#7E60BF] border border-[#7E60BF] rounded hover:border-red-600 hover:bg-red-100 disabled:border-[#CDC1FF] disabled:cursor-not-allowed">
                     도면삭제
                   </button>
-                  <button
-                    className="px-4 py-1 text-sm font-medium text-[#A294F9] border border-[#A294F9] rounded hover:border-[#42A5F5] hover:bg-[#F0F8FF] disabled:border-[#CDC1FF] disabled:cursor-not-allowed"
-                  >
+                  <button className="px-4 py-1 text-sm font-medium text-[#A294F9] border border-[#A294F9] rounded hover:border-[#42A5F5] hover:bg-[#F0F8FF] disabled:border-[#CDC1FF] disabled:cursor-not-allowed">
                     도면완료
                   </button>
                 </div>
@@ -605,9 +518,19 @@ const ProjectManagement = () => {
                       <h5 className="font-semibold mb-2">Analysis Summary</h5>
                       {selectedRuns[drawing.uuid] ? (
                         <div className="text-sm">
-                          <div>Model: {selectedRuns[drawing.uuid].model_name}</div>
-                          <div>Inst Error Rate: {selectedRuns[drawing.uuid].bbox_changed_count} / {selectedRuns[drawing.uuid].bbox_found_count}</div>
-                          <div>Pipe Error Rate: {selectedRuns[drawing.uuid].connect_changed_count} / {selectedRuns[drawing.uuid].connect_found_count}</div>
+                          <div>
+                            Model: {selectedRuns[drawing.uuid].model_name}
+                          </div>
+                          <div>
+                            Inst Error Rate:{" "}
+                            {selectedRuns[drawing.uuid].bbox_changed_count} /{" "}
+                            {selectedRuns[drawing.uuid].bbox_found_count}
+                          </div>
+                          <div>
+                            Pipe Error Rate:{" "}
+                            {selectedRuns[drawing.uuid].connect_changed_count} /{" "}
+                            {selectedRuns[drawing.uuid].connect_found_count}
+                          </div>
                           <div>Comp. Relation Verification: -</div>
                         </div>
                       ) : (
