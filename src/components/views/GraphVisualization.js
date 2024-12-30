@@ -347,7 +347,7 @@ const GraphVisualization = ({
         .duration(80)
         .attr("filter", `brightness(${bright})`);
     }
-  }, [hoverClass, graphData.nodes, graphData.edges, viewBox.scale]);
+  }, [hoverClass, graphData.nodes, graphData.edges]);
 
   useEffect(() => {
     if (target && isConnecting) {
@@ -1173,7 +1173,7 @@ const GraphVisualization = ({
           .attr("opacity", 0);
       }
     });
-  }, [graphData, isResizing, selectedNode, bright, nodeOpacity, viewBox.scale]);
+  }, [graphData, isResizing, selectedNode, bright, nodeOpacity, isCtrlPressed]);
 
   const startDrawing = (e) => {
     if (!isDrawing) return;
@@ -1418,7 +1418,7 @@ const GraphVisualization = ({
 
       setStartPoint({ x: event.clientX, y: event.clientY });
     },
-    [isPanning, selectTool, startPoint, viewBox.scale]
+    [isPanning, selectTool, startPoint]
   );
 
   const handleMouseUp = () => {
@@ -1497,7 +1497,6 @@ const GraphVisualization = ({
       setIsDrawing(false);
       updateSelection.style("opacity", 0).style("pointer-events", "none");
     } else if (selectTool !== "visible") {
-      setIsDrawing(false);
       // 최적화된 업데이트 로직
       svg.selectAll("circle").transition().duration(80).style("opacity", 1);
 
