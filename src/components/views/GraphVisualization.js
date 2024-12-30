@@ -64,25 +64,25 @@ const GraphVisualization = ({
   });
   const memoizedEdges = useMemo(() => graphData.edges, [graphData.edges]);
 
-  useEffect(() => {
-    if (initState) {
-      currentIndex += 1;
-      initRef.current = _.cloneDeep(initState);
-      isFirstRender2.current = false;
-    }
-  }, [initState]);
+  // useEffect(() => {
+  //   if (initState) {
+  //     currentIndex += 1;
+  //     initRef.current = _.cloneDeep(initState);
+  //     isFirstRender2.current = false;
+  //   }
+  // }, [initState]);
 
-  useEffect(() => {
-    if (!initRef.current) return;
-    if (history.length > 0) {
-      if (currentIndex === 0) {
-        setGraphData(initRef.current);
-        currentIndex += 1;
-      } else {
-        handleHistoryChange(history, currentIndex);
-      }
-    }
-  }, [currentIndex]);
+  // useEffect(() => {
+  //   if (!initRef.current) return;
+  //   if (history.length > 0) {
+  //     if (currentIndex === 0) {
+  //       setGraphData(initRef.current);
+  //       currentIndex += 1;
+  //     } else {
+  //       handleHistoryChange(history, currentIndex);
+  //     }
+  //   }
+  // }, [currentIndex]);
 
   // handleHistoryChange 함수 수정
   const handleHistoryChange = (history, currentIndex) => {
@@ -211,6 +211,7 @@ const GraphVisualization = ({
     // }
     save();
   }, [saveData]);
+
   useEffect(() => {
     const svg = d3.select(svgRef.current);
 
@@ -280,7 +281,7 @@ const GraphVisualization = ({
         const targetNode = graphData.nodes.find((n) => n.name === edge.target);
 
         if (sourceNode && targetNode) {
-          // 모든 position 포인트들의 평균값으로 중심점 계산
+          // 소스와 타겟 노드의 중심점 계산
           const sourceMidX =
             sourceNode.position.reduce((sum, pos) => sum + pos[0], 0) /
             sourceNode.position.length;
@@ -294,13 +295,23 @@ const GraphVisualization = ({
             targetNode.position.reduce((sum, pos) => sum + pos[1], 0) /
             targetNode.position.length;
 
+          // 엣지의 중간점 계산
           const midX = (sourceMidX + targetMidX) / 2;
           const midY = (sourceMidY + targetMidY) / 2;
 
-          // 노드들이 세로로 정렬되어 있는지 확인
-          const isVertical =
-            Math.abs(sourceMidX - targetMidX) <
-            Math.abs(sourceMidY - targetMidY);
+          // 라인의 각도 계산 (라디안)
+          const angle = Math.atan2(
+            targetMidY - sourceMidY,
+            targetMidX - sourceMidX
+          );
+
+          // 각도를 도(degree)로 변환
+          let degrees = angle * (180 / Math.PI);
+
+          // 텍스트가 항상 읽기 쉬운 방향으로 표시되도록 각도 조정
+          if (degrees > 90 || degrees < -90) {
+            degrees += 180;
+          }
 
           const textElement = svg
             .append("text")
@@ -311,14 +322,10 @@ const GraphVisualization = ({
             .attr("dominant-baseline", "central")
             .attr("fill", "white")
             .attr("font-weight", "bold")
-            .attr("font-size", `${Math.min(45, 45 / viewBox.scale)}px`)
+            .attr("font-size", `${Math.min(35, 45 / viewBox.scale)}px`)
             .attr("pointer-events", "none")
-            .text(hoverClass);
-
-          if (isVertical) {
-            // 세로로 텍스트를 돌리기 위해 회전(transform 적용)
-            textElement.attr("transform", `rotate(-90, ${midX}, ${midY})`); // -90도 회전
-          }
+            .text(hoverClass)
+            .attr("transform", `rotate(${degrees}, ${midX}, ${midY})`);
         }
       });
 
@@ -877,20 +884,58 @@ const GraphVisualization = ({
       });
 
     // 화살표 그리기
+    const markerSize = Math.min(Math.max(5 / Math.sqrt(viewBox.scale), 3), 15);
     svg
       .append("defs")
       .append("marker")
       .attr("id", "arrowhead")
       .attr("viewBox", "0 0 10 10")
-      .attr("refX", 8) // 선 끝의 x 좌표 (조정 가능)
-      .attr("refY", 5) // 화살표의 중심
-      .attr("markerWidth", 5)
-      .attr("markerHeight", 5)
+      .attr("refX", 5) // refX 값을 10으로 변경하여 화살표를 선과 떨어뜨림
+      .attr("refY", 5)
+      .attr("markerWidth", markerSize)
+      .attr("markerHeight", markerSize)
       .attr("orient", "auto")
       .append("path")
-      .attr("d", "M 0 0 L 10 5 L 0 10 Z") // 삼각형 화살표
-      .attr("fill", "#0078d4"); // 화살표 색상
+      .attr("d", "M 0 0 L 10 5 L 0 10 Z")
+      .attr("fill", "#0078d4");
 
+    // 엣지 데이터로부터 양방향 여부를 확인하는 함수
+    function isBidirectional(edges, source, target) {
+      return edges.some((e) => e.source === target && e.target === source);
+    }
+
+    // 오프셋된 경로를 생성하는 함수
+    function createCurvedPath(d, isReverse = false) {
+      const sourceX = getEdgeCoordinates(d.source, d.target).x1;
+      const sourceY = getEdgeCoordinates(d.source, d.target).y1;
+      const targetX = getEdgeCoordinates(d.source, d.target).x2;
+      const targetY = getEdgeCoordinates(d.source, d.target).y2;
+
+      // 두 점을 이은 선분에 수직인 방향 계산
+      const dx = targetX - sourceX;
+      const dy = targetY - sourceY;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      const nx = -dy / len;
+      const ny = dx / len;
+
+      // 오프셋 거리 (엣지 간격)
+      const offset = 3;
+
+      // 시작점과 끝점을 오프셋
+      const offsetX = nx * offset * (isReverse ? -1 : 1);
+      const offsetY = ny * offset * (isReverse ? -1 : 1);
+
+      // 중간점 계산 (곡률 추가)
+      const midX = (sourceX + targetX) / 2 + offsetX * 4; // 곡률을 조정하는 부분
+      const midY = (sourceY + targetY) / 2 + offsetY * 4;
+
+      // Quadratic Bezier Curve를 사용해 곡선을 생성
+      return `M ${sourceX + offsetX} ${sourceY + offsetY} Q ${midX} ${midY} ${
+        targetX + offsetX
+      } ${targetY + offsetY}`;
+    }
+
+    // 엣지 그룹 생성 및 데이터 바인딩
     const edgeLines = edgeGroup
       .selectAll(".edge-group")
       .data(graphData.edges)
@@ -900,40 +945,54 @@ const GraphVisualization = ({
 
     // 클릭 가능한 넓은 영역 (투명)
     edgeLines
-      .append("line")
+      .append("path")
       .attr("class", "edge-hit-area")
-      .attr("x1", (d) => getEdgeCoordinates(d.source, d.target).x1)
-      .attr("y1", (d) => getEdgeCoordinates(d.source, d.target).y1)
-      .attr("x2", (d) => getEdgeCoordinates(d.source, d.target).x2)
-      .attr("y2", (d) => getEdgeCoordinates(d.source, d.target).y2)
+      .attr("d", (d) => {
+        const isBi = isBidirectional(graphData.edges, d.source, d.target);
+        if (isBi) {
+          return createCurvedPath(d);
+        }
+        return `M ${getEdgeCoordinates(d.source, d.target).x1} ${
+          getEdgeCoordinates(d.source, d.target).y1
+        } 
+        L ${getEdgeCoordinates(d.source, d.target).x2} ${
+          getEdgeCoordinates(d.source, d.target).y2
+        }`;
+      })
       .attr("stroke", "transparent")
-      .attr("stroke-width", 20) // 넓은 클릭 영역
+      .attr("stroke-width", 20)
+      .attr("fill", "none")
       .style("cursor", "pointer");
 
     // 실제 표시되는 엣지 라인
     edgeLines
-      .append("line")
+      .append("path")
       .attr("class", "edge")
-      .attr("x1", (d) => getEdgeCoordinates(d.source, d.target).x1)
-      .attr("y1", (d) => getEdgeCoordinates(d.source, d.target).y1)
-      .attr("x2", (d) => getEdgeCoordinates(d.source, d.target).x2)
-      .attr("y2", (d) => getEdgeCoordinates(d.source, d.target).y2)
+      .attr("d", (d) => {
+        const isBi = isBidirectional(graphData.edges, d.source, d.target);
+        if (isBi) {
+          return createCurvedPath(d);
+        }
+        return `M
+          getEdgeCoordinates(d.source, d.target).y1
+        } 
+            L ${getEdgeCoordinates(d.source, d.target).x2} ${
+          getEdgeCoordinates(d.source, d.target).y2
+        }`;
+      })
       .attr("stroke", "#0078d4")
       .attr("stroke-width", 2)
+      .attr("fill", "none")
       .style("cursor", "pointer")
       .attr("marker-end", "url(#arrowhead)");
 
-    // 엣지 클릭 이벤트 추가 (투명 히트 영역에 이벤트 바인딩)
-    edgeLines.select(".edge-hit-area,line").on("click", (event, edge) => {
-      event.stopPropagation(); // 부모 요소로의 이벤트 전파 중지
+    // 엣지 클릭 이벤트
+    edgeLines.select(".edge-hit-area").on("click", (event, edge) => {
+      event.stopPropagation();
       setSelectedEdge(edge);
       setIsLabelPopupOpen(true);
       setSelectedSymbol(true);
-
-      // 노드 선택 해제
       setSelectedNode(null);
-
-      // 모든 리사이즈 핸들 숨기기
       svg.selectAll(".resize-handle").attr("opacity", 0);
     });
 
@@ -995,9 +1054,15 @@ const GraphVisualization = ({
       .style("fill", "white")
       .call(nodeDrag);
 
-    const handleSize = Math.min(
-      12,
-      15 * (viewBox.width / 1500) * (viewBox.height / 1500) * viewBox.scale
+    const handleSize = Math.max(
+      5,
+      Math.min(
+        12,
+        15 *
+          (viewBox.width / 1500) *
+          (viewBox.height / 1500) *
+          (1 / viewBox.scale)
+      )
     );
     // eslint-disable-next-line
     const cornerHandles = nodeGroup
@@ -1145,7 +1210,8 @@ const GraphVisualization = ({
         .attr("x", mouseX + 15)
         .attr("y", mouseY + 25)
         .text(
-          `${d.properties.label}${d.properties.text ? `, ${d.properties.text}` : ""
+          `${d.properties.label}${
+            d.properties.text ? `, ${d.properties.text}` : ""
           }`
         )
         .style("fill", "#ffffff")
@@ -1248,12 +1314,12 @@ const GraphVisualization = ({
         edges: prev.edges.map((edge) =>
           edge.name === selectedItem.name
             ? {
-              ...edge,
-              properties: {
-                ...edge.properties,
-                [selectedProperty]: value, // 선택한 속성 업데이트
-              },
-            }
+                ...edge,
+                properties: {
+                  ...edge.properties,
+                  [selectedProperty]: value, // 선택한 속성 업데이트
+                },
+              }
             : edge
         ),
       }));
@@ -1276,12 +1342,12 @@ const GraphVisualization = ({
         nodes: prev.nodes.map((node) =>
           node.name === selectedItem.name
             ? {
-              ...node,
-              properties: {
-                ...node.properties,
-                [selectedProperty]: value, // 선택한 속성 업데이트
-              },
-            }
+                ...node,
+                properties: {
+                  ...node.properties,
+                  [selectedProperty]: value, // 선택한 속성 업데이트
+                },
+              }
             : node
         ),
       }));
@@ -1338,7 +1404,7 @@ const GraphVisualization = ({
     if (selectedNode) {
       const confirmDelete = window.confirm(
         "해당 노드와 연결된 모든 엣지가 삭제됩니다.\n" +
-        "계속 진행하시겠습니까?"
+          "계속 진행하시겠습니까?"
       );
 
       // 노드 삭제 로직
@@ -1683,10 +1749,10 @@ const GraphVisualization = ({
           cursor: isDrawing
             ? "crosshair"
             : isPanning
-              ? "grabbing"
-              : isConnecting
-                ? "pointer"
-                : "grab",
+            ? "grabbing"
+            : isConnecting
+            ? "pointer"
+            : "grab",
         }}
       >
         {rectangle && (
