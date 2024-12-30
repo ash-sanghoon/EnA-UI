@@ -5,9 +5,9 @@ export default async function handler(req, res) {
   
     try {
       // 동적으로 Spring Boot API 엔드포인트 호출
-          //  const response = await fetch(`http://192.168.0.89:8081/api/project/${pathString}`, {
-      const response = await fetch(`http://localhost:8081/api/project/${pathString}`, {
-        method: req.method,
+           const response = await fetch(`http://192.168.0.89:8081/api/project/${pathString}`, {
+      // const response = await fetch(`http://localhost:8081/api/project/${pathString}`, {
+    method: req.method,
         headers: {
           'Content-Type': 'application/json',
         },
