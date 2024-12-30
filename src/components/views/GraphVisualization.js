@@ -345,7 +345,7 @@ const GraphVisualization = ({
         .duration(80)
         .attr("filter", `brightness(${bright})`);
     }
-  }, [hoverClass, graphData.nodes, graphData.edges, viewBox.scale]);
+  }, [hoverClass, graphData.nodes, graphData.edges]);
 
   useEffect(() => {
     if (target && isConnecting) {
@@ -1171,7 +1171,7 @@ const GraphVisualization = ({
           .attr("opacity", 0);
       }
     });
-  }, [graphData, isResizing, selectedNode, bright, nodeOpacity, viewBox.scale]);
+  }, [graphData, isResizing, selectedNode, bright, nodeOpacity, isCtrlPressed]);
 
   const startDrawing = (e) => {
     if (!isDrawing) return;
@@ -1416,7 +1416,7 @@ const GraphVisualization = ({
 
       setStartPoint({ x: event.clientX, y: event.clientY });
     },
-    [isPanning, selectTool, startPoint, viewBox.scale]
+    [isPanning, selectTool, startPoint]
   );
 
   const handleMouseUp = () => {
