@@ -363,15 +363,16 @@ const EnhancedLabelSelector = ({
                   ))}
                 </>
               )}
-              {/* searchTerm이 있을 때는 항상 추가 옵션을 표시 */}
-              {searchTerm && (
-                <div
-                  onClick={() => setTempSelectedValue(searchTerm.trim())}
-                  className="p-2 text-center text-sm border-t border-gray-100 text-blue-600 font-semibold cursor-pointer hover:text-blue-700 hover:bg-gray-50"
-                >
-                  "{searchTerm}" 값 추가
-                </div>
-              )}
+              {/* 정확히 일치하는 값이 없을 때만 추가 옵션을 표시 */}
+              {searchTerm &&
+                !filteredPropertyValues.includes(searchTerm.trim()) && (
+                  <div
+                    onClick={() => setTempSelectedValue(searchTerm.trim())}
+                    className="p-2 text-center text-sm border-t border-gray-100 text-blue-600 font-semibold cursor-pointer hover:text-blue-700 hover:bg-gray-50"
+                  >
+                    "{searchTerm}" 값 추가
+                  </div>
+                )}
             </div>
             <div className="flex justify-between p-2">
               <button
