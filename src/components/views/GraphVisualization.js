@@ -55,6 +55,13 @@ const GraphVisualization = ({
     height: 0,
     scale: 1,
   });
+  const [initialViewBox, setInitialViewBox] = useState({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    scale: 1,
+  });
   const memoizedEdges = useMemo(() => graphData.edges, [graphData.edges]);
 
   useEffect(() => {
@@ -345,7 +352,7 @@ const GraphVisualization = ({
         .duration(80)
         .attr("filter", `brightness(${bright})`);
     }
-  }, [hoverClass, graphData.nodes, graphData.edges]);
+  }, [hoverClass, graphData.nodes, graphData.edges, isCtrlPressed]);
 
   useEffect(() => {
     if (target && isConnecting) {
@@ -1050,7 +1057,7 @@ const GraphVisualization = ({
 
     // 공통 이벤트 핸들러 함수들
     const handleNodeMouseEnter = (event, d) => {
-      if ((isResizing && selectedNode !== d) || isResizing) {
+      if ((isResizing && selectedNode !== d) || isResizing || isPanning) {
         return;
       }
 
@@ -1123,7 +1130,11 @@ const GraphVisualization = ({
         .append("text")
         .attr("x", mouseX + 15)
         .attr("y", mouseY + 25)
-        .text(d.properties.label)
+        .text(
+          `${d.properties.label}${
+            d.properties.text ? `, ${d.properties.text}` : ""
+          }`
+        )
         .style("fill", "#ffffff")
         .style("font-size", `${50 / viewBox.scale}px`)
         .style("font-weight", "bold")
@@ -1397,26 +1408,28 @@ const GraphVisualization = ({
   const handleMouseDown = (event) => {
     setIsPanning(true);
     setStartPoint({ x: event.clientX, y: event.clientY });
+    // 마우스를 누른 시점의 viewBox 위치도 저장
+    setInitialViewBox(viewBox);
   };
+
   const handleMouseMove = useCallback(
     (event) => {
       if (!isPanning || selectTool === "drawing") return;
 
-      // 스케일 기반 민감도 설정
       const sensitivity = 0.3 * viewBox.scale;
 
+      // 처음 마우스를 누른 위치부터의 전체 이동량 계산
       const dx = (event.clientX - startPoint.x) / sensitivity;
       const dy = (event.clientY - startPoint.y) / sensitivity;
 
-      setViewBox((prev) => ({
-        ...prev,
-        x: prev.x - dx,
-        y: prev.y - dy,
-      }));
-
-      setStartPoint({ x: event.clientX, y: event.clientY });
+      // 초기 viewBox 위치에서 전체 이동량을 적용
+      setViewBox({
+        ...initialViewBox,
+        x: initialViewBox.x - dx,
+        y: initialViewBox.y - dy,
+      });
     },
-    [isPanning, selectTool, startPoint]
+    [isPanning, selectTool, startPoint, initialViewBox]
   );
 
   const handleMouseUp = () => {
@@ -1490,9 +1503,9 @@ const GraphVisualization = ({
       .transition()
       .duration(80);
 
-    if (selectTool === "invisible") {
+    if (selectTool === "visible") {
       updateSelection.style("opacity", 0).style("pointer-events", "none");
-    } else if (selectTool === "visible") {
+    } else if (selectTool !== "visible") {
       // 최적화된 업데이트 로직
       svg.selectAll("circle").transition().duration(80).style("opacity", 1);
 
