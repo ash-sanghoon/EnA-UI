@@ -25,7 +25,8 @@ const Graph = ({ projectId, drawingId }) => {
        const svg = d3.select(svgRef.current)
            .attr("width", "100%") 
            .attr("height", "100%")
-           .attr("viewBox", [-550, -550, window.innerWidth, window.innerHeight]);
+//           .attr("viewBox", [-550, -550, window.innerWidth, window.innerHeight]);
+           .attr("viewBox", [-1000, -1500, 5000, 5000]);
 
        // Container group 추가
        svg.append("g").attr("class", "container");
@@ -104,6 +105,7 @@ const Graph = ({ projectId, drawingId }) => {
            .append("text")
            .attr("y", (d) => -d.height / 2 - 10)
            .attr("text-anchor", "middle")
+           .style("font-size", "28px")
            .text((d) => d.name);
      
        // FromTo nodes

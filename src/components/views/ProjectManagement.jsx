@@ -6,14 +6,20 @@ import { useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { TiEdit } from "react-icons/ti";
 import ThumbnailSelect from "../common/ThumbnailSelect";
+import { TiEdit } from "react-icons/ti";
+import ThumbnailSelect from "../common/ThumbnailSelect";
 
 const ProjectManagement = () => {
+  const saveTimer = useRef(null);  // 여기에 추가
   const saveTimer = useRef(null);  // 여기에 추가
   const [project, setProject] = useState({
     uuid: "",
     country: "",
     company: "",
     standard: "",
+    project_name: "",
+    line_no_pattern: "",
+    drawing_no_pattern: "",
     project_name: "",
     line_no_pattern: "",
     drawing_no_pattern: "",
@@ -33,6 +39,71 @@ const ProjectManagement = () => {
       [name]: value, // 입력된 필드 값 업데이트
     }));
   };
+
+  const handleDrawingNoChange = (drawing_uuid, value) => {
+    // project 상태 업데이트
+    setProject(prevProject => {
+      // drawings 배열에서 해당 uuid를 가진 도면을 찾아 drawingNo 업데이트
+      const updatedDrawings = prevProject.drawings.map(drawing => {
+        if (drawing.uuid === drawing_uuid) {
+          return {
+            ...drawing,
+            drawingNo: value
+          };
+        }
+        return drawing;
+      });
+  
+      // 새로운 project 상태 반환
+      return {
+        ...prevProject,
+        drawings: updatedDrawings
+      };
+    });
+  
+    // 디바운스 처리를 위한 타이머 설정
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+    }
+    
+    // 500ms 후에 저장 실행
+    saveTimer.current = setTimeout(() => {
+      handleProjectSave();
+    }, 500);
+  };
+  
+  const handleSheetNoChange = (drawing_uuid, value) => {
+    // project 상태 업데이트
+    setProject(prevProject => {
+      // drawings 배열에서 해당 uuid를 가진 도면을 찾아 sheetNo 업데이트
+      const updatedDrawings = prevProject.drawings.map(drawing => {
+        if (drawing.uuid === drawing_uuid) {
+          return {
+            ...drawing,
+            sheetNo: value
+          };
+        }
+        return drawing;
+      });
+  
+      // 새로운 project 상태 반환
+      return {
+        ...prevProject,
+        drawings: updatedDrawings
+      };
+    });
+  
+    // 디바운스 처리를 위한 타이머 설정
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+    }
+    
+    // 500ms 후에 저장 실행
+    saveTimer.current = setTimeout(() => {
+      handleProjectSave();
+    }, 500);
+  };
+  
 
   const handleDrawingNoChange = (drawing_uuid, value) => {
     // project 상태 업데이트
@@ -134,8 +205,10 @@ const ProjectManagement = () => {
 
   // Handle run click
   const handleRunClick = (drawing_uuid, run) => {
+  const handleRunClick = (drawing_uuid, run) => {
     setSelectedRuns((prev) => ({
       ...prev,
+      [drawing_uuid]: run,
       [drawing_uuid]: run,
     }));
   };
@@ -218,6 +291,10 @@ const ProjectManagement = () => {
         alert("도면번호 유형을 선택해주세요");
         return;
       }
+      if(project.drawing_no_pattern === ""){
+        alert("도면번호 유형을 선택해주세요");
+        return;
+      }
       // API 호출
       const response = await axios.post("/api/project/save", project);
 
@@ -276,6 +353,9 @@ const ProjectManagement = () => {
                   <option value="Saudi Arabia">Saudi Arabia</option>
                   <option value="UAE">UAE</option>
                   <option value="Korea">Korea</option>
+                  <option value="Italia">Italia</option>
+                  <option value="Vetnam">Malaysian</option>
+                  <option value="Malaysian">Vetnam</option>
                 </select>
               </div>
               <div className="col-span-1 flex justify-end items-center">

@@ -124,7 +124,6 @@ const GraphVisualization = ({
   };
 
   useEffect(() => {
-    if (!pendingSaveData) return;
     if (pendingSaveData && !isPanning) {
       setSaveData(pendingSaveData);
       setPendingSaveData(null);
@@ -134,7 +133,6 @@ const GraphVisualization = ({
   const prevGraphDataRef = useRef([graphData]);
 
   useEffect(() => {
-    if (!saveData) return;
     const save = async () => {
       const requestData = {
         push: saveData,
@@ -406,7 +404,7 @@ const GraphVisualization = ({
         setTarget(null);
         setTarget2(null);
         setIsConnecting(false);
-        setSelectTool("hand");
+        setSelectTool(null);
         setSelectedNode(null);
       };
 
@@ -1225,7 +1223,7 @@ const GraphVisualization = ({
       setIsDrawing(false); // 드로잉 종료
       document.removeEventListener("mousemove", draw); // 마우스 이벤트 리스너 제거
       setIsLabelPopupOpen(true); // 팝업 열기
-      setSelectTool("hand");
+      setSelectTool(null);
     }
   };
 
@@ -1404,7 +1402,7 @@ const GraphVisualization = ({
         return;
       }
     }
-    setSelectTool("hand");
+    setSelectTool(null);
   };
 
   const handleMouseDown = (event) => {
@@ -1495,7 +1493,6 @@ const GraphVisualization = ({
 
     if (selectTool === "remove") {
       handleRemoveNode();
-      setIsDrawing(false);
       setTarget(null);
     }
     const svg = d3.select(svgRef.current);
@@ -1526,7 +1523,7 @@ const GraphVisualization = ({
         .style("opacity", 1)
         .style("pointer-events", "auto");
     }
-  }, [selectTool]);
+  }, [selectTool, nodeOpacity]);
 
   useEffect(() => {
     const svg = d3.select(svgRef.current);
