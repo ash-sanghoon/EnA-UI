@@ -122,17 +122,22 @@ const EnhancedLabelSelector = ({
     setTempSelectedValue(selectedItem?.properties?.[propertyName] || null);
     setSearchTerm("");
     setIsAddingProperty(false);
-
-    if (
-      selectedItem?.properties?.[propertyName] &&
-      labelRefs.current[selectedItem.properties[propertyName]]
-    ) {
-      labelRefs.current[selectedItem.properties[propertyName]].scrollIntoView({
-        behavior: "auto",
-        block: "center",
-      });
-    }
   };
+
+  // 새로운 useEffect 추가
+  useEffect(() => {
+    const selectedItem = selectedNode || selectedEdge;
+    const currentValue = selectedItem?.properties?.[selectedProperty];
+
+    if (currentValue && labelRefs.current[currentValue]) {
+      setTimeout(() => {
+        labelRefs.current[currentValue].scrollIntoView({
+          block: "center",
+          behavior: "auto",
+        });
+      }, 0);
+    }
+  }, [selectedProperty]);
 
   const handleAddProperty = () => {
     if (!newPropertyName.trim()) return;
@@ -167,6 +172,7 @@ const EnhancedLabelSelector = ({
 
   const handleValueSelect = (value) => {
     setTempSelectedValue(value);
+    setSearchTerm(value);
   };
 
   const handleSave = () => {
@@ -338,32 +344,32 @@ const EnhancedLabelSelector = ({
               className="w-full px-2 py-1 mb-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <div className="flex-1 overflow-y-auto border border-gray-200 rounded-md mb-3">
-              {filteredPropertyValues.length > 0 ? (
-                filteredPropertyValues.map((value) => (
-                  <div
-                    key={value}
-                    ref={(el) => (labelRefs.current[value] = el)}
-                    onClick={() => handleValueSelect(value)}
-                    className={`p-2 cursor-pointer border-b border-gray-100 truncate ${
-                      value === tempSelectedValue
-                        ? "bg-blue-50"
-                        : "bg-white hover:bg-gray-50"
-                    }`}
-                    title={value}
-                  >
-                    {value}
-                  </div>
-                ))
-              ) : (
-                <div className="p-2 text-center text-sm text-gray-500">
-                  {searchTerm && (
+              {filteredPropertyValues.length > 0 && (
+                <>
+                  {filteredPropertyValues.map((value) => (
                     <div
-                      onClick={() => setTempSelectedValue(searchTerm.trim())}
-                      className="text-blue-600 font-semibold cursor-pointer hover:text-blue-700"
+                      key={value}
+                      ref={(el) => (labelRefs.current[value] = el)}
+                      onClick={() => handleValueSelect(value)}
+                      className={`p-2 cursor-pointer border-b border-gray-100 truncate ${
+                        value === tempSelectedValue
+                          ? "bg-blue-50"
+                          : "bg-white hover:bg-gray-50"
+                      }`}
+                      title={value}
                     >
-                      "{searchTerm}" 값 추가
+                      {value}
                     </div>
-                  )}
+                  ))}
+                </>
+              )}
+              {/* searchTerm이 있을 때는 항상 추가 옵션을 표시 */}
+              {searchTerm && (
+                <div
+                  onClick={() => setTempSelectedValue(searchTerm.trim())}
+                  className="p-2 text-center text-sm border-t border-gray-100 text-blue-600 font-semibold cursor-pointer hover:text-blue-700 hover:bg-gray-50"
+                >
+                  "{searchTerm}" 값 추가
                 </div>
               )}
             </div>
