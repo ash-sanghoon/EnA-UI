@@ -276,6 +276,9 @@ const ProjectManagement = () => {
                   <option value="Saudi Arabia">Saudi Arabia</option>
                   <option value="UAE">UAE</option>
                   <option value="Korea">Korea</option>
+                  <option value="Italia">Italia</option>
+                  <option value="Vetnam">Malaysian</option>
+                  <option value="Malaysian">Vetnam</option>
                 </select>
               </div>
               <div className="col-span-1 flex justify-end items-center">
@@ -500,17 +503,18 @@ const ProjectManagement = () => {
                       {drawing.runs.map((run) => (
                         <div
                           key={run.runUUID}
-                          className={`cursor-pointer text-sm py-0 hover:text-blue-500 ${
+                          className={`cursor-pointer text-sm py-0 mb-1 hover:text-blue-500 ${
                             selectedRuns[drawing.uuid]?.runUUID === run.runUUID
                               ? "text-blue-600 font-semibold"
                               : ""
                           }`}
                           onClick={() => handleRunClick(drawing.uuid, run)}
                         >
-                          {run.run_date} &nbsp;&nbsp;&nbsp;
+                          {run.run_date} &nbsp;
                           <button
-                            className="px-4 py-1 text-sm font-medium text-white bg-[#A294F9] rounded hover:bg-[#9283ef] disabled:bg-[#ccc] disabled:cursor-not-allowed"
-                            onClick={() => {
+                            className="px-3 text-sm font-medium text-white bg-[#A294F9] rounded hover:bg-[#9283ef] disabled:bg-[#ccc] disabled:cursor-not-allowed"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               handleDrawingRunClick(drawing.uuid, run);
                             }}
                           >
