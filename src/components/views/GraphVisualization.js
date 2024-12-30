@@ -995,9 +995,15 @@ const GraphVisualization = ({
       .style("fill", "white")
       .call(nodeDrag);
 
-    const handleSize = Math.min(
-      12,
-      15 * (viewBox.width / 1500) * (viewBox.height / 1500) * viewBox.scale
+    const handleSize = Math.max(
+      5,
+      Math.min(
+        12,
+        15 *
+          (viewBox.width / 1500) *
+          (viewBox.height / 1500) *
+          (1 / viewBox.scale)
+      )
     );
     // eslint-disable-next-line
     const cornerHandles = nodeGroup
