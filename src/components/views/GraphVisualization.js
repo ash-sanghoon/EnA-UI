@@ -619,6 +619,7 @@ const GraphVisualization = ({
 
     // 노드 이동 드래그 행동 생성
     let dragOffset = null; // 드래그 시작 시 노드와 마우스 간의 오프셋
+    let initialPosition = null;
 
     const nodeDrag = d3
       .drag()
@@ -639,24 +640,37 @@ const GraphVisualization = ({
             svgPoint.x - nodeTopLeft[0],
             svgPoint.y - nodeTopLeft[1],
           ];
+
+          // 초기 위치 저장
+          initialPosition = [...d.position];
         }
       })
       .on("end", (event, d) => {
         setIsResizing(false);
         draggedNodeRef.current = null;
         dragOffset = null; // 드래그 종료 시 초기화
-        if (
-          event.sourceEvent.type === "mouseup" &&
-          event.sourceEvent.detail === 1
-        ) {
-          selectNode(event, d);
-          setIsLabelPopupOpen(true);
+
+        // 위치 변화가 있는지 확인
+        const hasPositionChanged =
+          d.position[0] !== initialPosition[0] ||
+          d.position[1] !== initialPosition[1];
+
+        if (hasPositionChanged) {
           setPendingSaveData({
             kind: "node",
             name: d.name,
             action: "upd",
             data: d,
           });
+        }
+
+        // 클릭 이벤트 처리
+        if (
+          event.sourceEvent.type === "mouseup" &&
+          event.sourceEvent.detail === 1
+        ) {
+          selectNode(event, d);
+          setIsLabelPopupOpen(true);
         }
       })
       .on("drag", (event, d) => {
