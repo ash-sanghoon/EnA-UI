@@ -926,12 +926,12 @@ const GraphVisualization = ({
       const offsetY = ny * offset * (isReverse ? -1 : 1);
 
       // 중간점 계산 (곡률 추가)
-      const midX = (sourceX + targetX) / 2 + offsetX * 5; // 곡률을 조정하는 부분
-      const midY = (sourceY + targetY) / 2 + offsetY * 5;
+      const midX = (sourceX + targetX) / 2 + offsetX * 4; // 곡률을 조정하는 부분
+      const midY = (sourceY + targetY) / 2 + offsetY * 4;
 
       // Quadratic Bezier Curve를 사용해 곡선을 생성
       return `M ${sourceX + offsetX} ${sourceY + offsetY} Q ${midX} ${midY} ${
-      targetX + offsetX
+        targetX + offsetX
       } ${targetY + offsetY}`;
     }
 
@@ -948,16 +948,16 @@ const GraphVisualization = ({
       .append("path")
       .attr("class", "edge-hit-area")
       .attr("d", (d) => {
-      const isBi = isBidirectional(graphData.edges, d.source, d.target);
-      if (isBi) {
-        return createCurvedPath(d);
-      }
-      return `M ${getEdgeCoordinates(d.source, d.target).x1} ${
-        getEdgeCoordinates(d.source, d.target).y1
-      } 
+        const isBi = isBidirectional(graphData.edges, d.source, d.target);
+        if (isBi) {
+          return createCurvedPath(d);
+        }
+        return `M ${getEdgeCoordinates(d.source, d.target).x1} ${
+          getEdgeCoordinates(d.source, d.target).y1
+        } 
         L ${getEdgeCoordinates(d.source, d.target).x2} ${
-        getEdgeCoordinates(d.source, d.target).y2
-      }`;
+          getEdgeCoordinates(d.source, d.target).y2
+        }`;
       })
       .attr("stroke", "transparent")
       .attr("stroke-width", 20)
@@ -969,11 +969,11 @@ const GraphVisualization = ({
       .append("path")
       .attr("class", "edge")
       .attr("d", (d) => {
-      const isBi = isBidirectional(graphData.edges, d.source, d.target);
-      if (isBi) {
-        return createCurvedPath(d);
-      }
-      return `M
+        const isBi = isBidirectional(graphData.edges, d.source, d.target);
+        if (isBi) {
+          return createCurvedPath(d);
+        }
+        return `M
           getEdgeCoordinates(d.source, d.target).y1
         } 
             L ${getEdgeCoordinates(d.source, d.target).x2} ${
