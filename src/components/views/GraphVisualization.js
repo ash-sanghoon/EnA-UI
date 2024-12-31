@@ -1292,7 +1292,6 @@ const GraphVisualization = ({
     bright,
     nodeOpacity,
     isCtrlPressed,
-    hoverClass,
   ]);
 
   const startDrawing = (e) => {
