@@ -1016,7 +1016,7 @@ const GraphVisualization = ({
     // eslint-disable-next-line
     const rectangleNodes = nodeGroup
       .selectAll("rect")
-      .data(graphData.nodes)
+      .data(graphData.nodes.filter((d) => d.properties.label !== "Joint")) // Joint 노드 필터링
       .enter()
       .append("rect")
       .attr("class", "node")
@@ -1029,6 +1029,7 @@ const GraphVisualization = ({
       .attr("pointer-events", "all")
       .attr("cursor", "move")
       .call(nodeDrag);
+
     // 원형 노드 그리기
     // eslint-disable-next-line
     const circleNodes = nodeGroup
@@ -1038,18 +1039,22 @@ const GraphVisualization = ({
       .append("circle")
       .attr("cx", (d) => getCenter(d)[0])
       .attr("cy", (d) => getCenter(d)[1])
-      .attr("r", (d) => getRadius(d))
-      .attr("fill", "#0078d4")
-      .attr("stroke", "#333")
-      .attr("stroke-width", 2)
+      .attr("r", (d) =>
+        d.properties.label === "Joint" ? getRadius(d) * 2 : getRadius(d)
+      )
+      .attr("fill", (d) =>
+        d.properties.label === "Joint" ? "#ffa500" : "#0078d4"
+      )
+      .attr("stroke", (d) => (d.properties.label === "Joint" ? "none" : "#333"))
+      .attr("stroke-width", (d) => (d.properties.label === "Joint" ? 0 : 2))
       .attr("pointer-events", "all")
       .attr("cursor", "move")
       .call(nodeDrag);
 
-    // 노드 이름 텍스트 추가
+    // 노드 이름 텍스트 추가 (Joint 제외)
     nodeGroup
       .selectAll("text")
-      .data(graphData.nodes)
+      .data(graphData.nodes.filter((d) => d.properties.label !== "Joint")) // Joint 노드 필터링
       .enter()
       .append("text")
       .attr("x", (d) => getCenter(d)[0])
@@ -1080,51 +1085,53 @@ const GraphVisualization = ({
           (1 / viewBox.scale)
       )
     );
+
     // eslint-disable-next-line
     const cornerHandles = nodeGroup
       .selectAll(".resize-handle")
       .data(
-        graphData.nodes.flatMap((node, nodeIndex) =>
-          [0, 1, 2, 3].map((cornerIndex) => ({
-            ...node,
-            cornerIndex,
-            nodeIndex,
-          }))
-        )
+      graphData.nodes.flatMap((node, nodeIndex) =>
+        [0, 1, 2, 3].map((cornerIndex) => ({
+        ...node,
+        cornerIndex,
+        nodeIndex,
+        }))
+      )
       )
       .enter()
       .append("rect")
       .attr("class", "resize-handle")
-      .attr("width", handleSize)
-      .attr("height", handleSize)
+      .attr("width", d => d.properties.label === "Joint" ? 0 : handleSize)
+      .attr("height", d => d.properties.label === "Joint" ? 0 : handleSize)
       .attr("fill", "#0078d4")
       .attr("opacity", 0)
-      .attr("cursor", (d) => {
-        const cursors = [
-          "nwse-resize", // 좌상단
-          "nesw-resize", // 우상단
-          "nesw-resize", // 좌하단
-          "nwse-resize", // 우하단
-        ];
-        return cursors[d.cornerIndex];
+      .attr("pointer-events", d => d.properties.label === "Joint" ? "none" : "all")
+      .attr("cursor", d => {
+      const cursors = [
+        "nwse-resize", // 좌상단
+        "nesw-resize", // 우상단
+        "nesw-resize", // 좌하단
+        "nwse-resize", // 우하단
+      ];
+      return cursors[d.cornerIndex];
       })
-      .attr("x", (d) => {
-        const corners = [
-          d.position[0][0] - handleSize / 2,
-          d.position[1][0] - handleSize / 2,
-          d.position[0][0] - handleSize / 2,
-          d.position[1][0] - handleSize / 2,
-        ];
-        return corners[d.cornerIndex];
+      .attr("x", d => {
+      const corners = [
+        d.position[0][0] - handleSize / 2,
+        d.position[1][0] - handleSize / 2,
+        d.position[0][0] - handleSize / 2,
+        d.position[1][0] - handleSize / 2,
+      ];
+      return corners[d.cornerIndex];
       })
-      .attr("y", (d) => {
-        const corners = [
-          d.position[0][1] - handleSize / 2,
-          d.position[0][1] - handleSize / 2,
-          d.position[1][1] - handleSize / 2,
-          d.position[1][1] - handleSize / 2,
-        ];
-        return corners[d.cornerIndex];
+      .attr("y", d => {
+      const corners = [
+        d.position[0][1] - handleSize / 2,
+        d.position[0][1] - handleSize / 2,
+        d.position[1][1] - handleSize / 2,
+        d.position[1][1] - handleSize / 2,
+      ];
+      return corners[d.cornerIndex];
       })
       .call(resizeDrag);
 
@@ -1276,7 +1283,7 @@ const GraphVisualization = ({
       .on("mouseleave", handleNodeMouseLeave);
 
     cornerHandles.on("mouseenter", function (event, d) {
-      if (isResizing || isDrawing) return;
+      if (isResizing || isDrawing || d.properties.label === "Joint") return;
       svg
         .selectAll(".resize-handle")
         .filter((handle) => handle.nodeIndex === d.nodeIndex)
