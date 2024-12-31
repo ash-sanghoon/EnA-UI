@@ -65,7 +65,10 @@ const GraphVisualization = ({
   const memoizedEdges = useMemo(() => graphData.edges, [graphData.edges]);
 
   useEffect(() => {
-    setTimeout(() => setIsCtrlPressed(false), 800);
+    const timer = setTimeout(() => {
+      setIsCtrlPressed(false);
+    }, 1000);
+    return () => clearTimeout(timer);
   }, []);
 
   // useEffect(() => {
@@ -1149,7 +1152,12 @@ const GraphVisualization = ({
 
     // 공통 이벤트 핸들러 함수들
     const handleNodeMouseEnter = (event, d) => {
-      if ((isResizing && selectedNode !== d) || isResizing || isPanning) {
+      if (
+        (isResizing && selectedNode !== d) ||
+        isResizing ||
+        isPanning ||
+        isDrawing
+      ) {
         return;
       }
 
@@ -1189,7 +1197,7 @@ const GraphVisualization = ({
     };
 
     const handleNodeMouseLeave = (event, d) => {
-      if (!selectedNode || selectedNode !== d || isResizing) {
+      if (!selectedNode || selectedNode !== d || isResizing || isDrawing) {
         // opacity 초기화
         svg.selectAll(".node").attr("opacity", nodeOpacity);
         svg.selectAll(".circle, circle, .edge-group, text").attr("opacity", 1);
@@ -1268,7 +1276,7 @@ const GraphVisualization = ({
       .on("mouseleave", handleNodeMouseLeave);
 
     cornerHandles.on("mouseenter", function (event, d) {
-      if (isResizing) return;
+      if (isResizing || isDrawing) return;
       svg
         .selectAll(".resize-handle")
         .filter((handle) => handle.nodeIndex === d.nodeIndex)
@@ -1276,7 +1284,12 @@ const GraphVisualization = ({
     });
 
     cornerHandles.on("mouseleave", function (event, d) {
-      if (!selectedNode || selectedNode !== d.name || isResizing) {
+      if (
+        !selectedNode ||
+        selectedNode !== d.name ||
+        isResizing ||
+        !isDrawing
+      ) {
         svg
           .selectAll(".resize-handle")
           .filter(
@@ -1285,15 +1298,7 @@ const GraphVisualization = ({
           .attr("opacity", 0);
       }
     });
-  }, [
-    graphData,
-    isResizing,
-    selectedNode,
-    bright,
-    nodeOpacity,
-    isCtrlPressed,
-    hoverClass,
-  ]);
+  }, [graphData, isResizing, selectedNode, bright, nodeOpacity, isCtrlPressed]);
 
   const startDrawing = (e) => {
     if (!isDrawing) return;

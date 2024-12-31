@@ -214,6 +214,15 @@ const EnhancedLabelSelector = ({
     }
   };
 
+  const shouldShowPropertyValue = (propertyName) => {
+    if (propertyName === selectedProperty && tempSelectedValue) {
+      return tempSelectedValue;
+    }
+
+    const selectedItem = selectedNode || selectedEdge;
+    return selectedItem?.properties?.[propertyName];
+  };
+
   if (!isOpen) return null;
 
   const selectedItem = selectedNode || selectedEdge;
@@ -313,18 +322,15 @@ const EnhancedLabelSelector = ({
                   <span className="flex-shrink-0 text-sm" title={propertyName}>
                     {propertyName}
                   </span>
-                  <span
-                    className="text-gray-500 text-sm truncate max-w-[100px]"
-                    title={
-                      propertyName === selectedProperty && tempSelectedValue
-                        ? tempSelectedValue
-                        : selectedItem?.properties?.[propertyName]
-                    }
-                  >
-                    {propertyName === selectedProperty && tempSelectedValue
-                      ? tempSelectedValue
-                      : selectedItem?.properties?.[propertyName]}
-                  </span>
+                  {/* 조건부 렌더링 수정 */}
+                  {shouldShowPropertyValue(propertyName) && (
+                    <span
+                      className="text-gray-500 text-sm truncate max-w-[100px]"
+                      title={shouldShowPropertyValue(propertyName)}
+                    >
+                      {shouldShowPropertyValue(propertyName)}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -363,7 +369,6 @@ const EnhancedLabelSelector = ({
                   ))}
                 </>
               )}
-              {/* 정확히 일치하는 값이 없을 때만 추가 옵션을 표시 */}
               {searchTerm &&
                 !filteredPropertyValues.includes(searchTerm.trim()) && (
                   <div
