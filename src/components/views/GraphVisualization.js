@@ -24,11 +24,11 @@ const GraphVisualization = ({
   setGraphData,
   imgURL,
   setIsSaving,
-  history,
-  setHistory,
-  currentIndex,
-  setCurrentIndex,
-  initState,
+  // history,
+  // setHistory,
+  // currentIndex,
+  // setCurrentIndex,
+  // initState,
 }) => {
   const [selectedNode, setSelectedNode] = useState(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -39,14 +39,14 @@ const GraphVisualization = ({
   const [rectangle, setRectangle] = useState(null);
   const [isLabelPopupOpen, setIsLabelPopupOpen] = useState(false);
   const svgRef = useRef(null);
-  const isFirstRender = useRef(true);
-  const isFirstRender2 = useRef(true);
+  // const isFirstRender = useRef(true);
+  // const isFirstRender2 = useRef(true);
   const [isPanning, setIsPanning] = useState(false);
   const [startPoint, setStartPoint] = useState({ x: 0, y: 0 });
-  const [isCtrlPressed, setIsCtrlPressed] = useState(false);
+  const [isCtrlPressed, setIsCtrlPressed] = useState(null);
   const [saveData, setSaveData] = useState({ kind: "", name: "", action: "" });
   const [pendingSaveData, setPendingSaveData] = useState(null);
-  const initRef = useRef(null);
+  // const initRef = useRef(null);
   const draggedNodeRef = useRef(null);
   const [viewBox, setViewBox] = useState({
     x: 0,
@@ -63,6 +63,10 @@ const GraphVisualization = ({
     scale: 1,
   });
   const memoizedEdges = useMemo(() => graphData.edges, [graphData.edges]);
+
+  useEffect(() => {
+    setTimeout(() => setIsCtrlPressed(false), 800);
+  }, []);
 
   // useEffect(() => {
   //   if (initState) {
@@ -85,43 +89,43 @@ const GraphVisualization = ({
   // }, [currentIndex]);
 
   // handleHistoryChange 함수 수정
-  const handleHistoryChange = (history, currentIndex) => {
-    const currentAction = history[currentIndex];
-    if (!currentAction) return;
+  // const handleHistoryChange = (history, currentIndex) => {
+  //   const currentAction = history[currentIndex];
+  //   if (!currentAction) return;
 
-    const { action, data } = currentAction;
-    if (!action || data === undefined) return;
+  //   const { action, data } = currentAction;
+  //   if (!action || data === undefined) return;
 
-    setGraphData((prevData) => {
-      const isNode = "position" in data;
-      const targetArray = isNode ? "nodes" : "edges";
+  //   setGraphData((prevData) => {
+  //     const isNode = "position" in data;
+  //     const targetArray = isNode ? "nodes" : "edges";
 
-      let newData = { ...prevData };
+  //     let newData = { ...prevData };
 
-      switch (action) {
-        case "upd": {
-          newData[targetArray] = prevData[targetArray].map((item) =>
-            item.name === data.name ? { ...data } : item
-          );
-          break;
-        }
+  //     switch (action) {
+  //       case "upd": {
+  //         newData[targetArray] = prevData[targetArray].map((item) =>
+  //           item.name === data.name ? { ...data } : item
+  //         );
+  //         break;
+  //       }
 
-        case "del": {
-          newData[targetArray] = [...prevData[targetArray], data];
-          break;
-        }
+  //       case "del": {
+  //         newData[targetArray] = [...prevData[targetArray], data];
+  //         break;
+  //       }
 
-        case "add": {
-          newData[targetArray] = prevData[targetArray].filter(
-            (item) => item.name !== data.name
-          );
-          break;
-        }
-      }
+  //       case "add": {
+  //         newData[targetArray] = prevData[targetArray].filter(
+  //           (item) => item.name !== data.name
+  //         );
+  //         break;
+  //       }
+  //     }
 
-      return newData;
-    });
-  };
+  //     return newData;
+  //   });
+  // };
 
   useEffect(() => {
     if (pendingSaveData && !isPanning) {
@@ -130,7 +134,7 @@ const GraphVisualization = ({
     }
   }, [pendingSaveData]);
 
-  const prevGraphDataRef = useRef([graphData]);
+  // const prevGraphDataRef = useRef([graphData]);
 
   useEffect(() => {
     const save = async () => {
@@ -271,7 +275,18 @@ const GraphVisualization = ({
           .attr("dominant-baseline", "baseline")
           .attr("fill", "white")
           .attr("font-weight", "bold")
-          .attr("font-size", `${Math.min(55, 55 / viewBox.scale)}px`)
+          .attr(
+            "font-size",
+            `${Math.max(
+              Math.sqrt(viewBox.width * viewBox.height) / 80, // 최소값
+              Math.min(
+                Math.sqrt(viewBox.width * viewBox.height) / 50, // 최대값
+                (50 * Math.sqrt(viewBox.width * viewBox.height)) /
+                  2000 /
+                  (1 + Math.log(viewBox.scale + 1))
+              )
+            )}px`
+          )
           .attr("pointer-events", "none")
           .text(hoverClass);
       });
@@ -898,42 +913,54 @@ const GraphVisualization = ({
       .append("path")
       .attr("d", "M 0 0 L 10 5 L 0 10 Z")
       .attr("fill", "#0078d4");
-      // 엣지 데이터로부터 양방향 여부를 확인하는 함수
-      const isBidirectional = (edges, source, target) =>
-        edges.some((e) => e.source === target && e.target === source);
+    // 엣지 데이터로부터 양방향 여부를 확인하는 함수
+    const isBidirectional = (edges, source, target) =>
+      edges.some((e) => e.source === target && e.target === source);
 
-      // 오프셋된 경로를 생성하는 함수
-      const createCurvedPath = (d, isReverse = false) => {
-        const { x1: sourceX, y1: sourceY, x2: targetX, y2: targetY } = getEdgeCoordinates(d.source, d.target);
+    // 오프셋된 경로를 생성하는 함수
+    const createCurvedPath = (d, isReverse = false) => {
+      const {
+        x1: sourceX,
+        y1: sourceY,
+        x2: targetX,
+        y2: targetY,
+      } = getEdgeCoordinates(d.source, d.target);
 
-        // 두 점을 이은 선분에 수직인 방향 계산
-        const dx = targetX - sourceX;
-        const dy = targetY - sourceY;
-        const len = Math.sqrt(dx * dx + dy * dy);
-        const nx = -dy / len;
-        const ny = dx / len;
+      // 두 점을 이은 선분에 수직인 방향 계산
+      const dx = targetX - sourceX;
+      const dy = targetY - sourceY;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      const nx = -dy / len;
+      const ny = dx / len;
 
-        // 오프셋 거리 (엣지 간격)
-        const offset = 3;
+      // 오프셋 거리 (엣지 간격)
+      const offset = 3;
 
-        // 시작점과 끝점을 오프셋
-        const offsetX = nx * offset * (isReverse ? -1 : 1);
-        const offsetY = ny * offset * (isReverse ? -1 : 1);
+      // 시작점과 끝점을 오프셋
+      const offsetX = nx * offset * (isReverse ? -1 : 1);
+      const offsetY = ny * offset * (isReverse ? -1 : 1);
 
-        // 중간점 계산 (곡률 추가)
-        const midX = (sourceX + targetX) / 2 + offsetX * 4; // 곡률을 조정하는 부분
-        const midY = (sourceY + targetY) / 2 + offsetY * 4;
+      // 중간점 계산 (곡률 추가)
+      const midX = (sourceX + targetX) / 2 + offsetX * 4; // 곡률을 조정하는 부분
+      const midY = (sourceY + targetY) / 2 + offsetY * 4;
 
-        // Quadratic Bezier Curve를 사용해 곡선을 생성
-        return `M ${sourceX + offsetX} ${sourceY + offsetY} Q ${midX} ${midY} ${targetX + offsetX} ${targetY + offsetY}`;
-      };
+      // Quadratic Bezier Curve를 사용해 곡선을 생성
+      return `M ${sourceX + offsetX} ${sourceY + offsetY} Q ${midX} ${midY} ${
+        targetX + offsetX
+      } ${targetY + offsetY}`;
+    };
 
-      // 직선 경로를 생성하는 함수 (단방향 엣지를 위한)
-      const createStraightPath = (d) => {
-        const { x1: sourceX, y1: sourceY, x2: targetX, y2: targetY } = getEdgeCoordinates(d.source, d.target);
+    // 직선 경로를 생성하는 함수 (단방향 엣지를 위한)
+    const createStraightPath = (d) => {
+      const {
+        x1: sourceX,
+        y1: sourceY,
+        x2: targetX,
+        y2: targetY,
+      } = getEdgeCoordinates(d.source, d.target);
 
-        return `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
-      };
+      return `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
+    };
 
     // 엣지 그룹 생성 및 데이터 바인딩
     const edgeLines = edgeGroup
@@ -1044,9 +1071,9 @@ const GraphVisualization = ({
       5,
       Math.min(
         12,
-        15 *
-          (viewBox.width / 1500) *
-          (viewBox.height / 1500) *
+        20 *
+          (viewBox.width / 1000) *
+          (viewBox.height / 1000) *
           (1 / viewBox.scale)
       )
     );
@@ -1201,7 +1228,18 @@ const GraphVisualization = ({
           }`
         )
         .style("fill", "#ffffff")
-        .style("font-size", `${50 / viewBox.scale}px`)
+        .style(
+          "font-size",
+          `${Math.max(
+            Math.sqrt(viewBox.width * viewBox.height) / 80, // 최소값
+            Math.min(
+              Math.sqrt(viewBox.width * viewBox.height) / 50, // 최대값
+              (50 * Math.sqrt(viewBox.width * viewBox.height)) /
+                2000 /
+                (1 + Math.log(viewBox.scale + 1))
+            )
+          )}px`
+        )
         .style("font-weight", "bold")
         .style("font-family", "Arial, sans-serif")
         .style("alignment-baseline", "middle");
@@ -1247,7 +1285,15 @@ const GraphVisualization = ({
           .attr("opacity", 0);
       }
     });
-  }, [graphData, isResizing, selectedNode, bright, nodeOpacity, isCtrlPressed]);
+  }, [
+    graphData,
+    isResizing,
+    selectedNode,
+    bright,
+    nodeOpacity,
+    isCtrlPressed,
+    hoverClass,
+  ]);
 
   const startDrawing = (e) => {
     if (!isDrawing) return;
@@ -1636,7 +1682,18 @@ const GraphVisualization = ({
         .attr("y", mouseY + 25)
         .text(tooltipText)
         .style("fill", "#ffffff")
-        .style("font-size", `${50 / viewBox.scale}px`)
+        .style(
+          "font-size",
+          `${Math.max(
+            Math.sqrt(viewBox.width * viewBox.height) / 80, // 최소값
+            Math.min(
+              Math.sqrt(viewBox.width * viewBox.height) / 50, // 최대값
+              (50 * Math.sqrt(viewBox.width * viewBox.height)) /
+                2000 /
+                (1 + Math.log(viewBox.scale + 1))
+            )
+          )}px`
+        )
         .style("font-weight", "bold")
         .style("font-family", "Arial, sans-serif")
         .style("alignment-baseline", "middle");
