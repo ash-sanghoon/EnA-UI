@@ -502,7 +502,7 @@ const ProjectManagement = () => {
                         >
                           {run.run_date} &nbsp;&nbsp;&nbsp;
                           <button
-                            className="px-4 py-1 text-sm font-medium text-white bg-[#A294F9] rounded hover:bg-[#9283ef] disabled:bg-[#ccc] disabled:cursor-not-allowed"
+                            className="px-2 py-0 mt-1 text-sm font-medium text-white bg-[#A294F9] rounded hover:bg-[#9283ef] disabled:bg-[#ccc] disabled:cursor-not-allowed"
                             onClick={() => {
                               handleDrawingRunClick(drawing.uuid, run);
                             }}
