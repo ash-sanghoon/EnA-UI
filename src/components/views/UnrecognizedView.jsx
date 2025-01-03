@@ -15,7 +15,7 @@ import GraphVisualization from "./GraphVisualization.js";
 import { BiShapeSquare } from "react-icons/bi";
 import { LuSquareDashed } from "react-icons/lu";
 import { useParams } from "react-router-dom";
-import axios from "axios";
+// import axios from "axios";
 import data from "./data.js";
 
 const UnrecognizedView = () => {
@@ -53,12 +53,13 @@ const UnrecognizedView = () => {
   // 도면인식 정보 조회 함수
   const fetchProjectDetails = async () => {
     try {
-      const response = await axios.get(
+      const response = await fetch(
         `/api/drawing/run_detail/${drawingId}/${runId}`
       );
-      setGraphData(response.data);
-      setInitState(response.data);
-      setImgURL(`/api/files/view/${response.data.drawing.drawingUuid}`);
+      const data = await response.json();
+      setGraphData(data);
+      setInitState(data);
+      setImgURL(`/api/files/view/${data.drawing.drawingUuid}`);
     } catch (error) {
       console.error("데이터 로드 실패:", error);
     }
@@ -178,14 +179,14 @@ const UnrecognizedView = () => {
         >
           <Waypoints className="w-5 h-5" />
         </button>
-        <button
+        {/* <button
           className={`p-2 text-white hover:bg-purple-700 rounded ${
             selectTool === "joint" ? "bg-purple-700" : ""
           }`}
           onClick={() => setSelectTool(selectTool === "joint" ? "" : "joint")}
         >
           <PenTool className="w-5 h-5" />
-        </button>
+        </button> */}
         <button
           className={`p-2 text-white hover:bg-purple-700 rounded`}
           style={{
@@ -313,9 +314,13 @@ const UnrecognizedView = () => {
             {/* 저장 로딩 아이콘 영역 */}
             {isSaving && (
               <>
-                <div className="absolute top-[-20px] right-[-15px] flex items-center gap-2 px-4 py-2">
+                <div className="absolute top-[-20px] right-[-15px] flex items-center gap-1 px-4 py-2">
                   <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                  <span className="text-sm text-gray-600">저장 중...</span>
+                  <span className="text-sm text-gray-600">
+                    {graphData?.nodes[0]?.properties?.label.includes("loading")
+                      ? "로딩 중..."
+                      : "저장 중..."}
+                  </span>
                 </div>
               </>
             )}
