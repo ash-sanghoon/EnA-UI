@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 
 const ProjectsView = ({ setSelectedProject }) => {
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ const ProjectsView = ({ setSelectedProject }) => {
 
   const changeProjectName = (projectName1, projectId) => {
     setSelectedProject(`${projectName1}`);
-  }
+  };
 
   const handleNavigateToResults = (projectId, projectName1) => {
     setSelectedProject(`${projectName1}`);
@@ -43,7 +43,7 @@ const ProjectsView = ({ setSelectedProject }) => {
         body: JSON.stringify(filters),
       });
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error("Network response was not ok");
       }
       const data = await response.json();
       setProjects(Array.isArray(data) ? data : []); // Ensure data is always an array
@@ -64,7 +64,7 @@ const ProjectsView = ({ setSelectedProject }) => {
         body: JSON.stringify(filters),
       });
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error("Network response was not ok");
       }
       const data = await response.json();
       handleNavigateToDetail(data.uuid);
@@ -84,24 +84,30 @@ const ProjectsView = ({ setSelectedProject }) => {
       <div className="bg-white p-6 rounded shadow mb-6">
         <div className="grid grid-cols-12 gap-4 items-center">
           <div className="col-span-3 flex items-center">
-            <label className="font-medium w-28 pl-8 pr-2" style={{ minWidth: "120px", textAlign: "right" }}>
+            <label
+              className="font-medium w-28 pl-8 pr-2"
+              style={{ minWidth: "120px", textAlign: "right" }}
+            >
               국가
             </label>
             <select
-                  name="country"
-                  value={filters.country}
-                  onChange={handleInputChange}
-                  className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-purple-500"
-                  required
-                >
-                  <option value="">선택하세요</option>
-                  <option value="Saudi Arabia">Saudi Arabia</option>
-                  <option value="UAE">UAE</option>
-                  <option value="Korea">Korea</option>
+              name="country"
+              value={filters.country}
+              onChange={handleInputChange}
+              className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-purple-500"
+              required
+            >
+              <option value="">선택하세요</option>
+              <option value="Saudi Arabia">Saudi Arabia</option>
+              <option value="UAE">UAE</option>
+              <option value="Korea">Korea</option>
             </select>
           </div>
           <div className="col-span-3 flex items-center">
-            <label className="font-medium w-28 pl-8 pr-2" style={{ minWidth: "120px", textAlign: "right" }}>
+            <label
+              className="font-medium w-28 pl-8 pr-2"
+              style={{ minWidth: "120px", textAlign: "right" }}
+            >
               표준
             </label>
             <select
@@ -115,10 +121,12 @@ const ProjectsView = ({ setSelectedProject }) => {
               <option value="ISO">ISO</option>
               <option value="ANSI/ISA">ANSI/ISA</option>
             </select>
-
           </div>
           <div className="col-span-3 flex items-center">
-            <label className="font-medium w-28 pl-8 pr-2" style={{ minWidth: "120px", textAlign: "right" }}>
+            <label
+              className="font-medium w-28 pl-8 pr-2"
+              style={{ minWidth: "120px", textAlign: "right" }}
+            >
               회사
             </label>
             <input
@@ -147,7 +155,10 @@ const ProjectsView = ({ setSelectedProject }) => {
             </button>
           </div>
           <div className="col-span-9 flex items-center">
-            <label className="font-medium w-28 pl-8" style={{ minWidth: "120px" }}>
+            <label
+              className="font-medium w-28 pl-8"
+              style={{ minWidth: "120px" }}
+            >
               프로젝트명
             </label>
             <input
@@ -167,62 +178,98 @@ const ProjectsView = ({ setSelectedProject }) => {
         <table className="w-full table-auto border-collapse border border-gray-300">
           <thead>
             <tr className="bg-gray-200">
-              <th className="border border-gray-300 px-4 py-2 text-center">프로젝트명</th>
-              <th className="border border-gray-300 px-4 py-2 text-center">회사</th>
-              <th className="border border-gray-300 px-4 py-2 text-center">국가</th>
-              <th className="border border-gray-300 px-4 py-2 text-center">표준</th>
-              <th className="border border-gray-300 px-4 py-2 text-center">진행률</th>
-              <th className="border border-gray-300 px-4 py-2 text-center">최종 수정일시</th>
-              <th className="border border-gray-300 px-4 py-2 text-center">작업</th>
+              <th className="border border-gray-300 px-4 py-2 text-center">
+                프로젝트명
+              </th>
+              <th className="border border-gray-300 px-4 py-2 text-center">
+                회사
+              </th>
+              <th className="border border-gray-300 px-4 py-2 text-center">
+                국가
+              </th>
+              <th className="border border-gray-300 px-4 py-2 text-center">
+                표준
+              </th>
+              <th className="border border-gray-300 px-4 py-2 text-center">
+                진행률
+              </th>
+              <th className="border border-gray-300 px-4 py-2 text-center">
+                최종 수정일시
+              </th>
+              <th className="border border-gray-300 px-4 py-2 text-center">
+                작업
+              </th>
             </tr>
           </thead>
           <tbody>
-            {Array.isArray(projects) && projects.map((project) => (
-              <tr 
-                key={project.projectUuid || project.uuid} 
-                className="hover:bg-gray-100"
-                onClick={() => changeProjectName(project.project_name, project.projectId)}
-              >
-                <td className="border border-gray-300 px-4 py-2 text-center">{project.project_name}</td>
-                <td className="border border-gray-300 px-4 py-2 text-center">{project.company}</td>
-                <td className="border border-gray-300 px-4 py-2 text-center">{project.country}</td>
-                <td className="border border-gray-300 px-4 py-2 text-center">{project.standard}</td>
-                <td className="border border-gray-300 px-4 py-2 text-center">
-                  <div className="flex items-center">
-                    <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
-                      <div
-                        className="bg-purple-600 h-2 rounded-full"
-                        style={{ width: `${project.progress || 0}%` }}
-                      />
+            {Array.isArray(projects) &&
+              projects.map((project) => (
+                <tr
+                  key={project.projectUuid || project.uuid}
+                  className="hover:bg-gray-100"
+                >
+                  <td className="border border-gray-300 px-4 py-2 text-center">
+                    {project.project_name}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-center">
+                    {project.company}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-center">
+                    {project.country}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-center">
+                    {project.standard}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-center">
+                    <div className="flex items-center">
+                      <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
+                        <div
+                          className="bg-purple-600 h-2 rounded-full"
+                          style={{ width: `${project.progress || 0}%` }}
+                        />
+                      </div>
+                      <span className="text-sm text-gray-500">
+                        {project.progress || 0}%
+                      </span>
                     </div>
-                    <span className="text-sm text-gray-500">{project.progress || 0}%</span>
-                  </div>
-                </td>
-                <td className="border border-gray-300 px-4 py-2 text-center">{project.last_update_date}</td>
-                <td className="border border-gray-300 px-4 py-2">
-                  <div className="flex justify-end space-x-2">
-                    <button 
-                      className="px-3 py-1 bg-[#E4B1F0] text-white rounded hover:bg-[#7E60BF]"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleNavigateToDetail(project.uuid || project.projectUuid, project.name);
-                      }}
-                    >
-                      상세
-                    </button>
-                    <button 
-                      className="px-3 py-1 bg-[#E4B1F0] text-white rounded hover:bg-[#7E60BF]"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleNavigateToResults(project.uuid || project.projectUuid, project.name);
-                      }}
-                    >
-                      결과
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-center">
+                    {project.last_update_date}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2">
+                    <div className="flex justify-end space-x-2">
+                      <button
+                        className="px-3 py-1 bg-[#E4B1F0] text-white rounded hover:bg-[#7E60BF]"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNavigateToDetail(
+                            project.uuid || project.projectUuid,
+                            project.name
+                          );
+                          changeProjectName(
+                            project.project_name,
+                            project.projectId
+                          );
+                        }}
+                      >
+                        상세
+                      </button>
+                      <button
+                        className="px-3 py-1 bg-[#E4B1F0] text-white rounded hover:bg-[#7E60BF]"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNavigateToResults(
+                            project.uuid || project.projectUuid,
+                            project.name
+                          );
+                        }}
+                      >
+                        결과
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
