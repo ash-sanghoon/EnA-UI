@@ -206,7 +206,13 @@ const ProjectsView = ({ setSelectedProject }) => {
               projects.map((project) => (
                 <tr
                   key={project.projectUuid || project.uuid}
-                  className="hover:bg-gray-100"
+                  className="hover:bg-gray-100 cursor-pointer"
+                  onClick={() =>
+                    handleNavigateToDetail(
+                      project.uuid || project.projectUuid,
+                      project.name
+                    )
+                  }
                 >
                   <td className="border border-gray-300 px-4 py-2 text-center">
                     {project.project_name}
