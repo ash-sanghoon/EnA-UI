@@ -1,103 +1,44 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { X, Upload, Underline } from "lucide-react";
+import { X, Upload } from "lucide-react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import { TiEdit } from "react-icons/ti";
 import ThumbnailSelect from "../common/ThumbnailSelect";
+import { LoadingSpinner } from "../common/LoadingSpinner.jsx";
+
+// 초기 프로젝트 상태
+const initialProjectState = {
+  uuid: "",
+  country: "",
+  company: "",
+  standard: "",
+  project_name: "",
+  line_no_pattern: "",
+  drawing_no_pattern: "",
+  files: [],
+  drawings: [],
+};
 
 const ProjectManagement = () => {
-  // 저장 타이머 ref 선언
-  const saveTimer = useRef(null);
-
-  // 프로젝트 상태 관리
-  const [project, setProject] = useState({
-    uuid: "",
-    country: "",
-    company: "",
-    standard: "",
-    project_name: "",
-    line_no_pattern: "",
-    drawing_no_pattern: "",
-    files: [],
-    drawings: [],
-  });
-
-  // 선택된 실행 기록 상태 관리
+  // 상태 관리
+  const [project, setProject] = useState(initialProjectState);
   const [selectedRuns, setSelectedRuns] = useState({});
+  const [files, setFiles] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Refs & Hooks
+  const saveTimer = useRef(null);
+  const formDataRef = useRef(project);
+  const dragRef = useRef(null);
   const { projectId } = useParams();
   const navigate = useNavigate();
 
-  // 프로젝트 정보 입력 처리
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setProject((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  // 도면 번호 변경 처리
-  const handleDrawingNoChange = (drawing_uuid, value) => {
-    setProject((prevProject) => {
-      const updatedDrawings = prevProject.drawings.map((drawing) => {
-        if (drawing.uuid === drawing_uuid) {
-          return {
-            ...drawing,
-            drawingNo: value,
-          };
-        }
-        return drawing;
-      });
-
-      return {
-        ...prevProject,
-        drawings: updatedDrawings,
-      };
-    });
-
-    // 디바운스 처리
-    if (saveTimer.current) {
-      clearTimeout(saveTimer.current);
-    }
-
-    saveTimer.current = setTimeout(() => {
-      handleProjectSave();
-    }, 500);
-  };
-
-  // 시트 번호 변경 처리
-  const handleSheetNoChange = (drawing_uuid, value) => {
-    setProject((prevProject) => {
-      const updatedDrawings = prevProject.drawings.map((drawing) => {
-        if (drawing.uuid === drawing_uuid) {
-          return {
-            ...drawing,
-            sheetNo: value,
-          };
-        }
-        return drawing;
-      });
-
-      return {
-        ...prevProject,
-        drawings: updatedDrawings,
-      };
-    });
-
-    // 디바운스 처리
-    if (saveTimer.current) {
-      clearTimeout(saveTimer.current);
-    }
-
-    saveTimer.current = setTimeout(() => {
-      handleProjectSave();
-    }, 500);
-  };
-
-  // 초기 데이터 로드
+  // project 상태 변경 시 ref 업데이트
   useEffect(() => {
-    fetchProjectDetails();
-  }, [projectId]);
+    formDataRef.current = project;
+  }, [project]);
 
   // 프로젝트 정보 조회
   const fetchProjectDetails = async () => {
@@ -114,123 +55,122 @@ const ProjectManagement = () => {
       });
       setSelectedRuns(initialRuns);
     } catch (error) {
-      console.error("프로젝트 정보를 가져오는 중 오류 발생:", error);
+      console.error("프로젝트 정보 조회 실패:", error);
       alert("프로젝트 정보를 불러오는 데 실패했습니다.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // 도면 클릭 처리
+  // 초기 데이터 로드
+  useEffect(() => {
+    fetchProjectDetails();
+  }, [projectId]);
+
+  // 이벤트 핸들러
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setProject(prev => ({ ...prev, [name]: value }));
+  };
+
+  // 도면 번호 및 시트 번호 변경 핸들러
+  const handleDrawingFieldChange = (drawing_uuid, field, value) => {
+    setProject(prevProject => ({
+      ...prevProject,
+      drawings: prevProject.drawings.map(drawing =>
+        drawing.uuid === drawing_uuid
+          ? { ...drawing, [field]: value }
+          : drawing
+      )
+    }));
+
+    // 디바운스 처리
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(handleProjectSave, 500);
+  };
+
+  // 파일 업로드 핸들러
+  const handleFileChange = useCallback(async (e) => {
+    const selectFiles = e.type === "drop" ? e.dataTransfer.files : e.target.files;
+    if (!selectFiles?.length) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("projectUuid", formDataRef.current.uuid);
+      Array.from(selectFiles).forEach(file => {
+        formData.append("uploadFiles", file);
+      });
+
+      const response = await axios.post("/api/files/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+
+      const uploadedFiles = response.data.map(fileInfo => ({
+        fileName: fileInfo.fileName,
+        uuid: fileInfo.uuid,
+        type: fileInfo.fileName,
+      }));
+
+      setProject(prev => ({
+        ...prev,
+        files: [...prev.files, ...uploadedFiles],
+      }));
+      setFiles(prev => [...prev, ...uploadedFiles]);
+    } catch (error) {
+      console.error("파일 업로드 실패:", error);
+      alert("파일 업로드에 실패했습니다.");
+    }
+  }, []);
+
+  // 파일 삭제 핸들러
+  const deleteFile = async (fileUuid) => {
+    try {
+      await axios.delete(`/api/files/delete/${fileUuid}`);
+      setProject(prev => ({
+        ...prev,
+        files: prev.files.filter(file => file.uuid !== fileUuid),
+      }));
+    } catch (error) {
+      console.error("파일 삭제 실패:", error);
+      alert("파일 삭제에 실패했습니다.");
+    }
+  };
+  // 네비게이션 핸들러
   const handleDrawingClick = (drawing) => {
     navigate(`/unrecognized/${drawing.uuid}/0`);
   };
 
-  // 도면 실행 기록 클릭 처리
   const handleDrawingRunClick = (drawing, run) => {
     navigate(`/unrecognized/${drawing.uuid}/${run.uuid}`);
   };
 
-  // 실행 기록 선택 처리
+  // 실행 기록 선택 핸들러
   const handleRunClick = (drawing_uuid, run) => {
-    setSelectedRuns((prev) => ({
+    setSelectedRuns(prev => ({
       ...prev,
       [drawing_uuid]: run,
     }));
   };
 
-  const formDataRef = useRef(project);
-
-  // project 상태 변경 시 ref 업데이트
-  useEffect(() => {
-    formDataRef.current = project;
-  }, [project]);
-
-  // 파일 삭제 처리
-  const deleteFile = async (fileUuid) => {
-    try {
-      await axios.delete(`/api/files/delete/${fileUuid}`);
-      setProject({
-        ...project,
-        files: project.files.filter((file) => file.uuid !== fileUuid),
-      });
-    } catch (error) {
-      console.error("파일 삭제 실패:", error);
-    }
-  };
-
-  // 파일 관련 상태 관리
-  const [files, setFiles] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isDisabled, setIsDisabled] = useState(true);
-  const [isDragging, setIsDragging] = useState(false);
-
-  const dragRef = useRef(null);
-
-  // 파일 변경 처리
-  const handleFileChange = useCallback(
-    async (e) => {
-      let selectFiles = [];
-      if (e.type === "drop") {
-        selectFiles = e.dataTransfer.files;
-      } else {
-        selectFiles = e.target.files;
-      }
-      if (!selectFiles || selectFiles.length === 0) return;
-
-      try {
-        const formDataUpload = new FormData();
-        formDataUpload.append("projectUuid", formDataRef.current.uuid);
-        Array.from(selectFiles).forEach((file) => {
-          formDataUpload.append("uploadFiles", file);
-        });
-
-        const response = await axios.post("/api/files/upload", formDataUpload, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        });
-
-        // 업로드된 파일 정보 저장
-        const uploadedFileUuids = response.data.map((fileInfo) => ({
-          fileName: fileInfo.fileName,
-          uuid: fileInfo.uuid,
-          type: fileInfo.fileName,
-        }));
-        setProject((prevProject) => ({
-          ...prevProject,
-          files: [...prevProject.files, ...uploadedFileUuids],
-        }));
-
-        setFiles((prevFiles) => [...prevFiles, ...uploadedFileUuids]);
-      } catch (error) {
-        console.error("파일 업로드 중 오류 발생:", error);
-      }
-    },
-    [setFiles]
-  );
-
-  // 프로젝트 저장 처리
+  // 프로젝트 저장 핸들러
   const handleProjectSave = async () => {
-    setIsLoading(true);
+    if (!project.drawing_no_pattern) {
+      alert("도면번호 유형을 선택해주세요");
+      return;
+    }
+
+    setIsSaving(true);
     try {
-      if (project.drawing_no_pattern === "") {
-        alert("도면번호 유형을 선택해주세요");
-        return;
-      }
-
-      // API 호출
       const response = await axios.post("/api/project/save", project);
-
       if (response.status === 200) {
         alert("프로젝트가 성공적으로 저장되었습니다!");
         await fetchProjectDetails();
-      } else {
-        alert("프로젝트 저장 중 문제가 발생했습니다.");
       }
     } catch (error) {
-      console.error("프로젝트 저장 오류:", error);
-      alert("프로젝트 저장 중 오류가 발생했습니다.");
+      console.error("프로젝트 저장 실패:", error);
+      alert("프로젝트 저장에 실패했습니다.");
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -434,6 +374,8 @@ const ProjectManagement = () => {
       {/* Drawings Section */}
       <div className="mt-8">
         <h2 className="text-2xl font-bold mb-4">Drawing Information</h2>
+        {isLoading && <LoadingSpinner />}
+
         <div className="grid grid-cols-3 gap-8">
           {project.drawings.map((drawing) => (
             <div
@@ -493,11 +435,10 @@ const ProjectManagement = () => {
                       {drawing.runs.map((run) => (
                         <div
                           key={run.runUUID}
-                          className={`cursor-pointer text-sm py-0 hover:text-blue-500 ${
-                            selectedRuns[drawing.uuid]?.runUUID === run.runUUID
-                              ? "text-blue-600 font-semibold"
-                              : ""
-                          }`}
+                          className={`cursor-pointer text-sm py-0 hover:text-blue-500 ${selectedRuns[drawing.uuid]?.runUUID === run.runUUID
+                            ? "text-blue-600 font-semibold"
+                            : ""
+                            }`}
                           onClick={() => handleRunClick(drawing.uuid, run)}
                         >
                           {run.run_date} &nbsp;&nbsp;&nbsp;

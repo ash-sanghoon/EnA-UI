@@ -10,6 +10,7 @@ import LabelSelectorPopup from "../modals/ClassEditModal";
 import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 import _ from "lodash";
+import { getEdgeCoordinates, getCenter, getRadius, handleHoverEffect } from "../graph elements/utils";
 
 const GraphVisualization = ({
   selectTool,
@@ -24,11 +25,6 @@ const GraphVisualization = ({
   setGraphData,
   imgURL,
   setIsSaving,
-  // history,
-  // setHistory,
-  // currentIndex,
-  // setCurrentIndex,
-  // initState,
 }) => {
   const [selectedNode, setSelectedNode] = useState(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -39,14 +35,11 @@ const GraphVisualization = ({
   const [rectangle, setRectangle] = useState(null);
   const [isLabelPopupOpen, setIsLabelPopupOpen] = useState(false);
   const svgRef = useRef(null);
-  // const isFirstRender = useRef(true);
-  // const isFirstRender2 = useRef(true);
   const [isPanning, setIsPanning] = useState(false);
   const [startPoint, setStartPoint] = useState({ x: 0, y: 0 });
   const [isCtrlPressed, setIsCtrlPressed] = useState(null);
   const [saveData, setSaveData] = useState({ kind: "", name: "", action: "" });
   const [pendingSaveData, setPendingSaveData] = useState(null);
-  // const initRef = useRef(null);
   const draggedNodeRef = useRef(null);
   const [viewBox, setViewBox] = useState({
     x: 0,
@@ -71,65 +64,6 @@ const GraphVisualization = ({
     return () => clearTimeout(timer);
   }, []);
 
-  // useEffect(() => {
-  //   if (initState) {
-  //     currentIndex += 1;
-  //     initRef.current = _.cloneDeep(initState);
-  //     isFirstRender2.current = false;
-  //   }
-  // }, [initState]);
-
-  // useEffect(() => {
-  //   if (!initRef.current) return;
-  //   if (history.length > 0) {
-  //     if (currentIndex === 0) {
-  //       setGraphData(initRef.current);
-  //       currentIndex += 1;
-  //     } else {
-  //       handleHistoryChange(history, currentIndex);
-  //     }
-  //   }
-  // }, [currentIndex]);
-
-  // handleHistoryChange 함수 수정
-  // const handleHistoryChange = (history, currentIndex) => {
-  //   const currentAction = history[currentIndex];
-  //   if (!currentAction) return;
-
-  //   const { action, data } = currentAction;
-  //   if (!action || data === undefined) return;
-
-  //   setGraphData((prevData) => {
-  //     const isNode = "position" in data;
-  //     const targetArray = isNode ? "nodes" : "edges";
-
-  //     let newData = { ...prevData };
-
-  //     switch (action) {
-  //       case "upd": {
-  //         newData[targetArray] = prevData[targetArray].map((item) =>
-  //           item.name === data.name ? { ...data } : item
-  //         );
-  //         break;
-  //       }
-
-  //       case "del": {
-  //         newData[targetArray] = [...prevData[targetArray], data];
-  //         break;
-  //       }
-
-  //       case "add": {
-  //         newData[targetArray] = prevData[targetArray].filter(
-  //           (item) => item.name !== data.name
-  //         );
-  //         break;
-  //       }
-  //     }
-
-  //     return newData;
-  //   });
-  // };
-
   useEffect(() => {
     if (pendingSaveData && !isPanning) {
       setSaveData(pendingSaveData);
@@ -137,7 +71,6 @@ const GraphVisualization = ({
     }
   }, [pendingSaveData]);
 
-  // const prevGraphDataRef = useRef([graphData]);
 
   useEffect(() => {
     const save = async () => {
@@ -145,46 +78,6 @@ const GraphVisualization = ({
         push: saveData,
         origin: graphData,
       };
-      console.log(saveData);
-
-      // // 히스토리 업데이트 로직
-      // setHistory((prev) => {
-      //   const safePrev = Array.isArray(prev) ? prev : [];
-      //   const newHistoryItem = _.cloneDeep({
-      //     action: saveData.action,
-      //     data: saveData.data,
-      //   });
-
-      //   // currentIndex가 마지막이 아닌 경우의 처리
-      //   let updatedHistory =
-      //     currentIndex < safePrev.length - 1
-      //       ? [...safePrev.slice(0, currentIndex + 1), newHistoryItem]
-      //       : [...safePrev, newHistoryItem];
-
-      //   // 중복 제거 로직
-      //   const seen = new Set();
-      //   const uniqueHistory = updatedHistory.filter((item) => {
-      //     if (!item.action || !item.data) return false;
-
-      //     const key = JSON.stringify({ action: item.action, data: item.data });
-      //     if (seen.has(key)) return false;
-
-      //     seen.add(key);
-      //     return true;
-      //   });
-
-      //   // currentIndex 조정이 필요한 경우
-      //   if (uniqueHistory.length !== updatedHistory.length) {
-      //     setTimeout(() => {
-      //       setCurrentIndex(Math.min(currentIndex, uniqueHistory.length - 1));
-      //     }, 0);
-      //   }
-
-      //   return uniqueHistory;
-      // });
-
-      // setCurrentIndex((prev) => prev + 1);
-
       try {
         setIsSaving(true);
         const response = await axios.post(
@@ -198,185 +91,12 @@ const GraphVisualization = ({
         setIsSaving(false);
       }
     };
-
-    // let isGraphDataChanged;
-    // // 깊은 복사본으로 비교
-    // if (currentIndex === 0) {
-    //   isGraphDataChanged = !_.isEqual(
-    //     _.cloneDeep(initRef.current),
-    //     _.cloneDeep(graphData)
-    //   );
-    // } else {
-    //   isGraphDataChanged = !_.isEqual(
-    //     _.cloneDeep(prevGraphDataRef.current),
-    //     _.cloneDeep(graphData)
-    //   );
-    // }
-    // if (isGraphDataChanged) {
-    //   prevGraphDataRef.current = _.cloneDeep(graphData);
-    //   save();
-    // }
     save();
   }, [saveData]);
 
   useEffect(() => {
     const svg = d3.select(svgRef.current);
-
-    if (hoverClass !== null) {
-      // hoverClass와 일치하는 노드와 엣지 찾기
-      const matchingNodes = graphData.nodes.filter(
-        (node) =>
-          node.properties?.label === hoverClass ||
-          node.properties?.line_no === hoverClass
-      );
-      const matchingEdges = graphData.edges.filter(
-        (edge) => edge.properties?.line_no === hoverClass
-      );
-
-      // 노드 이름과 엣지의 source-target 쌍 수집
-      const matchingNodeNames = matchingNodes.map((node) => node.name);
-      const matchingEdgePairs = matchingEdges.map((edge) => ({
-        source: edge.source,
-        target: edge.target,
-      }));
-
-      svg
-        .selectAll(".node, text, circle")
-        .transition()
-        .duration(80)
-        .attr("opacity", (d) =>
-          matchingNodeNames.includes(d?.name) ? 1 : 0.2
-        );
-
-      // 엣지 강조 처리
-      svg
-        .selectAll(".edge-group")
-        .transition()
-        .duration(80)
-        .style("opacity", (d) => {
-          const isMatching = matchingEdgePairs.some(
-            (pair) =>
-              (pair.source === d.source && pair.target === d.target) ||
-              (pair.source === d.target && pair.target === d.source)
-          );
-          return isMatching ? 1 : 0.2;
-        });
-
-      // 기존 호버 레이블 제거
-      svg.selectAll(".hover-label").remove();
-
-      // 일치하는 노드에 호버 레이블 추가
-      matchingNodes.forEach((node) => {
-        const topRight = [node.position[0][0], node.position[0][1]];
-
-        svg
-          .append("text")
-          .attr("class", "hover-label")
-          .attr("x", topRight[0])
-          .attr("y", topRight[1] - 15)
-          .attr("text-anchor", "start")
-          .attr("dominant-baseline", "baseline")
-          .attr("fill", "white")
-          .attr("font-weight", "bold")
-          .attr(
-            "font-size",
-            `${Math.max(
-              Math.sqrt(viewBox.width * viewBox.height) / 80, // 최소값
-              Math.min(
-                Math.sqrt(viewBox.width * viewBox.height) / 50, // 최대값
-                (50 * Math.sqrt(viewBox.width * viewBox.height)) /
-                  2000 /
-                  (1 + Math.log(viewBox.scale + 1))
-              )
-            )}px`
-          )
-          .attr("pointer-events", "none")
-          .text(hoverClass);
-      });
-
-      matchingEdges.forEach((edge) => {
-        const sourceNode = graphData.nodes.find((n) => n.name === edge.source);
-        const targetNode = graphData.nodes.find((n) => n.name === edge.target);
-
-        if (sourceNode && targetNode) {
-          // 소스와 타겟 노드의 중심점 계산
-          const sourceMidX =
-            sourceNode.position.reduce((sum, pos) => sum + pos[0], 0) /
-            sourceNode.position.length;
-          const sourceMidY =
-            sourceNode.position.reduce((sum, pos) => sum + pos[1], 0) /
-            sourceNode.position.length;
-          const targetMidX =
-            targetNode.position.reduce((sum, pos) => sum + pos[0], 0) /
-            targetNode.position.length;
-          const targetMidY =
-            targetNode.position.reduce((sum, pos) => sum + pos[1], 0) /
-            targetNode.position.length;
-
-          // 엣지의 중간점 계산
-          const midX = (sourceMidX + targetMidX) / 2;
-          const midY = (sourceMidY + targetMidY) / 2;
-
-          // 라인의 각도 계산 (라디안)
-          const angle = Math.atan2(
-            targetMidY - sourceMidY,
-            targetMidX - sourceMidX
-          );
-
-          // 각도를 도(degree)로 변환
-          let degrees = angle * (180 / Math.PI);
-
-          // 텍스트가 항상 읽기 쉬운 방향으로 표시되도록 각도 조정
-          if (degrees > 90 || degrees < -90) {
-            degrees += 180;
-          }
-
-          const textElement = svg
-            .append("text")
-            .attr("class", "hover-label")
-            .attr("x", midX)
-            .attr("y", midY - 10)
-            .attr("text-anchor", "middle")
-            .attr("dominant-baseline", "central")
-            .attr("fill", "white")
-            .attr("font-weight", "bold")
-            .attr("font-size", `${Math.min(35, 45 / viewBox.scale)}px`)
-            .attr("pointer-events", "none")
-            .text(hoverClass)
-            .attr("transform", `rotate(${degrees}, ${midX}, ${midY})`);
-        }
-      });
-
-      // 배경 밝기 조정
-      svg
-        .select(".background image")
-        .transition()
-        .duration(80)
-        .attr("filter", "brightness(0.3)");
-    } else {
-      // 호버가 없을 때 모든 요소를 원래 상태로 복원
-      svg
-        .selectAll(".node, text, circle")
-        .transition()
-        .duration(80)
-        .attr("opacity", nodeOpacity);
-
-      svg
-        .selectAll(".edge-group")
-        .transition()
-        .duration(80)
-        .style("opacity", 1);
-
-      // 호버 레이블 제거
-      svg.selectAll(".hover-label").remove();
-
-      // 배경 밝기 복원
-      svg
-        .select(".background image")
-        .transition()
-        .duration(80)
-        .attr("filter", `brightness(${bright})`);
-    }
+    handleHoverEffect(svg, hoverClass, graphData, nodeOpacity, bright, viewBox);
   }, [hoverClass, graphData.nodes, graphData.edges, isCtrlPressed]);
 
   useEffect(() => {
@@ -491,104 +211,6 @@ const GraphVisualization = ({
       finalizeConnection();
     }
   }, [target, target2, isConnecting, graphData.edges, setSelectTool]);
-
-  // 노드의 중심점 계산
-  const getCenter = useCallback((node) => {
-    const [topLeft, bottomRight] = node.position;
-    return [
-      (topLeft[0] + bottomRight[0]) / 2,
-      (topLeft[1] + bottomRight[1]) / 2,
-    ];
-  }, []);
-
-  const getRadius = useCallback((node) => {
-    const [topLeft, bottomRight] = node.position;
-    return Math.max(
-      0,
-      Math.min(
-        Math.abs(bottomRight[0] - topLeft[0]) / 4,
-        Math.abs(bottomRight[1] - topLeft[1]) / 4
-      )
-    );
-  }, []);
-
-  // 엣지 좌표 계산
-  const getEdgeCoordinates = (source, target) => {
-    const sourceNode = graphData.nodes.find((node) => node.name === source);
-    const targetNode = graphData.nodes.find((node) => node.name === target);
-
-    // 소스와 타겟 노드의 중심점 계산
-    const sourceCenter = [
-      (sourceNode.position[0][0] + sourceNode.position[1][0]) / 2,
-      (sourceNode.position[0][1] + sourceNode.position[1][1]) / 2,
-    ];
-    const targetCenter = [
-      (targetNode.position[0][0] + targetNode.position[1][0]) / 2,
-      (targetNode.position[0][1] + targetNode.position[1][1]) / 2,
-    ];
-
-    // 방향 벡터 계산
-    const dx = targetCenter[0] - sourceCenter[0];
-    const dy = targetCenter[1] - sourceCenter[1];
-    const angle = Math.atan2(dy, dx);
-
-    // 소스 노드의 치수
-    const sourceWidth = sourceNode.position[1][0] - sourceNode.position[0][0];
-    const sourceHeight = sourceNode.position[1][1] - sourceNode.position[0][1];
-
-    // 타겟 노드의 치수
-    const targetWidth = targetNode.position[1][0] - targetNode.position[0][0];
-    const targetHeight = targetNode.position[1][1] - targetNode.position[0][1];
-
-    // 교차점 계산 함수
-    const getIntersection = (center, width, height, angle) => {
-      const w2 = width / 2;
-      const h2 = height / 2;
-
-      // 각도에 따른 사분면 확인
-      if (Math.abs(Math.cos(angle)) * h2 > Math.abs(Math.sin(angle)) * w2) {
-        // 수직 경계와 교차
-        const x = w2 * Math.sign(Math.cos(angle));
-        const y = x * Math.tan(angle);
-        return [center[0] + x, center[1] + y];
-      } else {
-        // 수평 경계와 교차
-        const y = h2 * Math.sign(Math.sin(angle));
-        const x = y / Math.tan(angle);
-        return [center[0] + x, center[1] + y];
-      }
-    };
-
-    // 소스와 타겟 노드의 교차점 계산
-    const sourceIntersection = getIntersection(
-      sourceCenter,
-      sourceWidth,
-      sourceHeight,
-      angle
-    );
-    const targetIntersection = getIntersection(
-      targetCenter,
-      targetWidth,
-      targetHeight,
-      angle + Math.PI
-    );
-
-    // 패딩 값 설정
-    const sourcePadding = 5; // 시작점 패딩
-    const targetPadding = 8; // 끝점 패딩 (화살표를 위해 더 큰 값 사용)
-
-    // 방향에 따른 패딩 적용
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const unitX = dx / distance;
-    const unitY = dy / distance;
-
-    return {
-      x1: sourceIntersection[0] + unitX * sourcePadding,
-      y1: sourceIntersection[1] + unitY * sourcePadding,
-      x2: targetIntersection[0] - unitX * targetPadding,
-      y2: targetIntersection[1] - unitY * targetPadding,
-    };
-  };
 
   useEffect(() => {
     const updateImageSize = () => {
@@ -754,7 +376,7 @@ const GraphVisualization = ({
 
           const edgeGroup = d3.select(svgRef.current).select(".edges");
           connectedEdges.forEach((edge) => {
-            const coords = getEdgeCoordinates(edge.source, edge.target);
+            const coords = getEdgeCoordinates(graphData, edge.source, edge.target);
             edgeGroup
               .selectAll(".edge-group")
               .filter((e) => e === edge)
@@ -927,7 +549,7 @@ const GraphVisualization = ({
         y1: sourceY,
         x2: targetX,
         y2: targetY,
-      } = getEdgeCoordinates(d.source, d.target);
+      } = getEdgeCoordinates(graphData, d.source, d.target);
 
       // 두 점을 이은 선분에 수직인 방향 계산
       const dx = targetX - sourceX;
@@ -948,9 +570,8 @@ const GraphVisualization = ({
       const midY = (sourceY + targetY) / 2 + offsetY * 4;
 
       // Quadratic Bezier Curve를 사용해 곡선을 생성
-      return `M ${sourceX + offsetX} ${sourceY + offsetY} Q ${midX} ${midY} ${
-        targetX + offsetX
-      } ${targetY + offsetY}`;
+      return `M ${sourceX + offsetX} ${sourceY + offsetY} Q ${midX} ${midY} ${targetX + offsetX
+        } ${targetY + offsetY}`;
     };
 
     // 직선 경로를 생성하는 함수 (단방향 엣지를 위한)
@@ -960,7 +581,7 @@ const GraphVisualization = ({
         y1: sourceY,
         x2: targetX,
         y2: targetY,
-      } = getEdgeCoordinates(d.source, d.target);
+      } = getEdgeCoordinates(graphData, d.source, d.target);
 
       return `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
     };
@@ -1080,9 +701,9 @@ const GraphVisualization = ({
       Math.min(
         12,
         20 *
-          (viewBox.width / 1000) *
-          (viewBox.height / 1000) *
-          (1 / viewBox.scale)
+        (viewBox.width / 1000) *
+        (viewBox.height / 1000) *
+        (1 / viewBox.scale)
       )
     );
 
@@ -1090,13 +711,13 @@ const GraphVisualization = ({
     const cornerHandles = nodeGroup
       .selectAll(".resize-handle")
       .data(
-      graphData.nodes.flatMap((node, nodeIndex) =>
-        [0, 1, 2, 3].map((cornerIndex) => ({
-        ...node,
-        cornerIndex,
-        nodeIndex,
-        }))
-      )
+        graphData.nodes.flatMap((node, nodeIndex) =>
+          [0, 1, 2, 3].map((cornerIndex) => ({
+            ...node,
+            cornerIndex,
+            nodeIndex,
+          }))
+        )
       )
       .enter()
       .append("rect")
@@ -1107,31 +728,31 @@ const GraphVisualization = ({
       .attr("opacity", 0)
       .attr("pointer-events", d => d.properties.label === "Joint" ? "none" : "all")
       .attr("cursor", d => {
-      const cursors = [
-        "nwse-resize", // 좌상단
-        "nesw-resize", // 우상단
-        "nesw-resize", // 좌하단
-        "nwse-resize", // 우하단
-      ];
-      return cursors[d.cornerIndex];
+        const cursors = [
+          "nwse-resize", // 좌상단
+          "nesw-resize", // 우상단
+          "nesw-resize", // 좌하단
+          "nwse-resize", // 우하단
+        ];
+        return cursors[d.cornerIndex];
       })
       .attr("x", d => {
-      const corners = [
-        d.position[0][0] - handleSize / 2,
-        d.position[1][0] - handleSize / 2,
-        d.position[0][0] - handleSize / 2,
-        d.position[1][0] - handleSize / 2,
-      ];
-      return corners[d.cornerIndex];
+        const corners = [
+          d.position[0][0] - handleSize / 2,
+          d.position[1][0] - handleSize / 2,
+          d.position[0][0] - handleSize / 2,
+          d.position[1][0] - handleSize / 2,
+        ];
+        return corners[d.cornerIndex];
       })
       .attr("y", d => {
-      const corners = [
-        d.position[0][1] - handleSize / 2,
-        d.position[0][1] - handleSize / 2,
-        d.position[1][1] - handleSize / 2,
-        d.position[1][1] - handleSize / 2,
-      ];
-      return corners[d.cornerIndex];
+        const corners = [
+          d.position[0][1] - handleSize / 2,
+          d.position[0][1] - handleSize / 2,
+          d.position[1][1] - handleSize / 2,
+          d.position[1][1] - handleSize / 2,
+        ];
+        return corners[d.cornerIndex];
       })
       .call(resizeDrag);
 
@@ -1238,8 +859,7 @@ const GraphVisualization = ({
         .attr("x", mouseX + 15)
         .attr("y", mouseY + 25)
         .text(
-          `${d.properties.label}${
-            d.properties.text ? `, ${d.properties.text}` : ""
+          `${d.properties.label}${d.properties.text ? `, ${d.properties.text}` : ""
           }`
         )
         .style("fill", "#ffffff")
@@ -1250,8 +870,8 @@ const GraphVisualization = ({
             Math.min(
               Math.sqrt(viewBox.width * viewBox.height) / 50, // 최대값
               (50 * Math.sqrt(viewBox.width * viewBox.height)) /
-                2000 /
-                (1 + Math.log(viewBox.scale + 1))
+              2000 /
+              (1 + Math.log(viewBox.scale + 1))
             )
           )}px`
         )
@@ -1358,12 +978,12 @@ const GraphVisualization = ({
         edges: prev.edges.map((edge) =>
           edge.name === selectedItem.name
             ? {
-                ...edge,
-                properties: {
-                  ...edge.properties,
-                  [selectedProperty]: value, // 선택한 속성 업데이트
-                },
-              }
+              ...edge,
+              properties: {
+                ...edge.properties,
+                [selectedProperty]: value, // 선택한 속성 업데이트
+              },
+            }
             : edge
         ),
       }));
@@ -1386,12 +1006,12 @@ const GraphVisualization = ({
         nodes: prev.nodes.map((node) =>
           node.name === selectedItem.name
             ? {
-                ...node,
-                properties: {
-                  ...node.properties,
-                  [selectedProperty]: value, // 선택한 속성 업데이트
-                },
-              }
+              ...node,
+              properties: {
+                ...node.properties,
+                [selectedProperty]: value, // 선택한 속성 업데이트
+              },
+            }
             : node
         ),
       }));
@@ -1448,7 +1068,7 @@ const GraphVisualization = ({
     if (selectedNode) {
       const confirmDelete = window.confirm(
         "해당 노드와 연결된 모든 엣지가 삭제됩니다.\n" +
-          "계속 진행하시겠습니까?"
+        "계속 진행하시겠습니까?"
       );
 
       // 노드 삭제 로직
@@ -1701,8 +1321,8 @@ const GraphVisualization = ({
             Math.min(
               Math.sqrt(viewBox.width * viewBox.height) / 50, // 최대값
               (50 * Math.sqrt(viewBox.width * viewBox.height)) /
-                2000 /
-                (1 + Math.log(viewBox.scale + 1))
+              2000 /
+              (1 + Math.log(viewBox.scale + 1))
             )
           )}px`
         )
@@ -1804,10 +1424,10 @@ const GraphVisualization = ({
           cursor: isDrawing
             ? "crosshair"
             : isPanning
-            ? "grabbing"
-            : isConnecting
-            ? "pointer"
-            : "grab",
+              ? "grabbing"
+              : isConnecting
+                ? "pointer"
+                : "grab",
         }}
       >
         {rectangle && (
