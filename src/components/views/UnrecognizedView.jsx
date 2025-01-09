@@ -29,7 +29,6 @@ const UnrecognizedView = () => {
   // 히스토리 관리
   const [history, setHistory] = useState([{ action: "action", data: "data" }]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [initState, setInitState] = useState(null);
 
   // 패널 리사이징 상태
   const [rightPanelWidth, setRightPanelWidth] = useState(280);
@@ -51,9 +50,8 @@ const UnrecognizedView = () => {
       setIsLoading(true);
       const response = await fetch(`/api/drawing/run_detail/${drawingId}/${runId}`);
       const data = await response.json();
-      setGraphData(data);
-      setInitState(data);
       setImgURL(`/api/files/view/${data.drawing.drawingUuid}`);
+      setGraphData(data);
     } catch (error) {
       console.error("데이터 로드 실패:", error);
     } finally {
@@ -279,7 +277,6 @@ const UnrecognizedView = () => {
               setHistory={setHistory}
               currentIndex={currentIndex}
               setCurrentIndex={setCurrentIndex}
-              initState={initState}
             />
           </div>
         </div>

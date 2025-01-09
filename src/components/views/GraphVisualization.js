@@ -10,7 +10,7 @@ import LabelSelectorPopup from "../modals/ClassEditModal";
 import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 import _ from "lodash";
-import { getEdgeCoordinates, getCenter, getRadius, handleHoverEffect } from "../graph elements/utils";
+import { getEdgeCoordinates, getCenter, getRadius, handleEdgeOpacityEffect, handleNodeHoverLabel, handleEdgeHoverLabel, handleBackgroundBrightness, handleHoverEffect } from "../graph elements/utils.js";
 
 const GraphVisualization = ({
   selectTool,
@@ -71,7 +71,7 @@ const GraphVisualization = ({
     }
   }, [pendingSaveData]);
 
-
+  // 노드, 엣지 데이터 저장
   useEffect(() => {
     const save = async () => {
       const requestData = {
@@ -94,10 +94,59 @@ const GraphVisualization = ({
     save();
   }, [saveData]);
 
+  // 노드 opacity 효과
   useEffect(() => {
-    const svg = d3.select(svgRef.current);
-    handleHoverEffect(svg, hoverClass, graphData, nodeOpacity, bright, viewBox);
-  }, [hoverClass, graphData.nodes, graphData.edges, isCtrlPressed]);
+    handleHoverEffect(svgRef, hoverClass, graphData, nodeOpacity);
+
+    return () => {
+      if (!svgRef.current) return;
+
+      d3.select(svgRef.current)
+        .selectAll(".node, text, circle")
+        .transition()
+        .duration(80)
+        .attr("opacity", nodeOpacity);
+    };
+  }, [hoverClass, graphData.nodes]);
+
+  // 엣지 opacity 효과
+  useEffect(() => {
+    handleEdgeOpacityEffect(svgRef, hoverClass, graphData);
+
+    return () => {
+      if (!svgRef.current) return;
+      d3.select(svgRef.current)
+        .selectAll(".edge-group")
+        .transition()
+        .duration(80)
+        .style("opacity", 1);
+    };
+  }, [hoverClass, graphData.edges]);
+
+  // 노드 호버 레이블
+  useEffect(() => {
+    handleNodeHoverLabel(svgRef, hoverClass, graphData, viewBox);
+
+    return () => {
+      if (!svgRef.current) return;
+      d3.select(svgRef.current).selectAll(".hover-label").remove();
+    };
+  }, [hoverClass, graphData.nodes, viewBox]);
+
+  // 엣지 호버 레이블
+  useEffect(() => {
+    handleEdgeHoverLabel(svgRef, hoverClass, graphData, viewBox);
+
+    return () => {
+      if (!svgRef.current) return;
+      d3.select(svgRef.current).selectAll(".hover-label").remove();
+    };
+  }, [hoverClass, graphData.edges, graphData.nodes, viewBox]);
+
+  // 배경 밝기 조절
+  useEffect(() => {
+    handleBackgroundBrightness(svgRef, hoverClass, bright);
+  }, [hoverClass, bright]);
 
   useEffect(() => {
     if (target && isConnecting) {
@@ -105,7 +154,6 @@ const GraphVisualization = ({
     }
   }, [target, isConnecting]);
 
-  // Existing useEffect for ctrl key handling
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.ctrlKey) {
@@ -373,6 +421,7 @@ const GraphVisualization = ({
           const connectedEdges = memoizedEdges.filter(
             (edge) => edge.source === d.name || edge.target === d.name
           );
+          if (graphData.nodes[0].name === 'loading...') return
 
           const edgeGroup = d3.select(svgRef.current).select(".edges");
           connectedEdges.forEach((edge) => {
