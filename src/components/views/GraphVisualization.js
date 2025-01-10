@@ -41,6 +41,7 @@ const GraphVisualization = ({
   const [saveData, setSaveData] = useState({ kind: "", name: "", action: "" });
   const [pendingSaveData, setPendingSaveData] = useState(null);
   const draggedNodeRef = useRef(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [viewBox, setViewBox] = useState({
     x: 0,
     y: 0,
@@ -123,6 +124,14 @@ const GraphVisualization = ({
     };
   }, [hoverClass, graphData.edges]);
 
+  // hoverClass 출력
+  useEffect(() => {
+    if (hoverClass) {
+      console.log("Current hoverClass:", hoverClass);
+    }
+  }, [hoverClass]);
+
+
   // 노드 호버 레이블
   useEffect(() => {
     handleNodeHoverLabel(svgRef, hoverClass, graphData, viewBox);
@@ -131,7 +140,7 @@ const GraphVisualization = ({
       if (!svgRef.current) return;
       d3.select(svgRef.current).selectAll(".hover-label").remove();
     };
-  }, [hoverClass, graphData.nodes, viewBox]);
+  }, [hoverClass, graphData.nodes, isCtrlPressed]);
 
   // 엣지 호버 레이블
   useEffect(() => {
@@ -141,7 +150,7 @@ const GraphVisualization = ({
       if (!svgRef.current) return;
       d3.select(svgRef.current).selectAll(".hover-label").remove();
     };
-  }, [hoverClass, graphData.edges, graphData.nodes, viewBox]);
+  }, [hoverClass, graphData.edges, graphData.nodes, isCtrlPressed]);
 
   // 배경 밝기 조절
   useEffect(() => {
@@ -262,6 +271,8 @@ const GraphVisualization = ({
 
   useEffect(() => {
     const updateImageSize = () => {
+      setIsLoading(true); // 이미지 로딩 시작
+
       const img = new Image();
       img.onload = () => {
         const originalWidth = img.naturalWidth;
@@ -275,6 +286,8 @@ const GraphVisualization = ({
           height: originalHeight,
           scale: 1,
         });
+
+        setIsLoading(false); // 이미지 로딩 완료
       };
       img.src = imgURL;
     };
@@ -286,6 +299,7 @@ const GraphVisualization = ({
       window.removeEventListener("resize", updateImageSize);
     };
   }, [imgURL]);
+
 
   useEffect(() => {
     const svg = d3.select(svgRef.current);
@@ -579,14 +593,16 @@ const GraphVisualization = ({
       .append("marker")
       .attr("id", "arrowhead")
       .attr("viewBox", "0 0 10 10")
-      .attr("refX", 5) // refX 값을 10으로 변경하여 화살표를 선과 떨어뜨림
+      .attr("refX", 4)
       .attr("refY", 5)
-      .attr("markerWidth", markerSize)
-      .attr("markerHeight", markerSize)
+      .attr("markerWidth", 5)
+      .attr("markerHeight", 5)
       .attr("orient", "auto")
       .append("path")
-      .attr("d", "M 0 0 L 10 5 L 0 10 Z")
-      .attr("fill", "#0078d4");
+      .attr("d", "M 0 2 L 7 5 L 0 8 L 1.5 5 Z")
+      .attr("fill", "#0EA5E9")
+      .attr("stroke-linejoin", "round");
+
     // 엣지 데이터로부터 양방향 여부를 확인하는 함수
     const isBidirectional = (edges, source, target) =>
       edges.some((e) => e.source === target && e.target === source);
@@ -599,25 +615,20 @@ const GraphVisualization = ({
         x2: targetX,
         y2: targetY,
       } = getEdgeCoordinates(graphData, d.source, d.target);
-
       // 두 점을 이은 선분에 수직인 방향 계산
       const dx = targetX - sourceX;
       const dy = targetY - sourceY;
       const len = Math.sqrt(dx * dx + dy * dy);
       const nx = -dy / len;
       const ny = dx / len;
-
       // 오프셋 거리 (엣지 간격)
       const offset = 3;
-
       // 시작점과 끝점을 오프셋
       const offsetX = nx * offset * (isReverse ? -1 : 1);
       const offsetY = ny * offset * (isReverse ? -1 : 1);
-
       // 중간점 계산 (곡률 추가)
-      const midX = (sourceX + targetX) / 2 + offsetX * 4; // 곡률을 조정하는 부분
-      const midY = (sourceY + targetY) / 2 + offsetY * 4;
-
+      const midX = (sourceX + targetX) / 2 + offsetX * 3;
+      const midY = (sourceY + targetY) / 2 + offsetY * 3;
       // Quadratic Bezier Curve를 사용해 곡선을 생성
       return `M ${sourceX + offsetX} ${sourceY + offsetY} Q ${midX} ${midY} ${targetX + offsetX
         } ${targetY + offsetY}`;
@@ -631,7 +642,6 @@ const GraphVisualization = ({
         x2: targetX,
         y2: targetY,
       } = getEdgeCoordinates(graphData, d.source, d.target);
-
       return `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
     };
 
@@ -643,13 +653,20 @@ const GraphVisualization = ({
       .append("g")
       .attr("class", "edge-group");
 
+    // 호버 효과를 위한 스타일 정의
+    svg.append("defs")
+      .append("filter")
+      .attr("id", "edge-glow")
+      .append("feGaussianBlur")
+      .attr("stdDeviation", "2")
+      .attr("result", "coloredBlur");
+
     // 클릭 가능한 넓은 영역 (투명)
     edgeLines
       .append("path")
       .attr("class", "edge-hit-area")
       .attr("d", (d) => {
         const isBi = isBidirectional(graphData.edges, d.source, d.target);
-        // 양방향 엣지인 경우만 곡선 경로를 사용하고, 단방향은 직선 경로
         return isBi ? createCurvedPath(d) : createStraightPath(d);
       })
       .attr("stroke", "transparent")
@@ -663,14 +680,49 @@ const GraphVisualization = ({
       .attr("class", "edge")
       .attr("d", (d) => {
         const isBi = isBidirectional(graphData.edges, d.source, d.target);
-        // 양방향 엣지인 경우만 곡선 경로를 사용하고, 단방향은 직선 경로
         return isBi ? createCurvedPath(d) : createStraightPath(d);
       })
-      .attr("stroke", "#0078d4")
-      .attr("stroke-width", 2)
+      .attr("stroke", "#0EA5E9")
+      .attr("stroke-width", 1.5)
+      .attr("stroke-linecap", "round")
       .attr("fill", "none")
       .style("cursor", "pointer")
-      .attr("marker-end", "url(#arrowhead)");
+      .attr("marker-end", "url(#arrowhead)")
+      .style("transition", "all 0.2s ease-in-out")
+      .on("click", function (event, d) {
+        setSelectedEdge(d);
+      });
+
+
+    // 호버 효과
+    edgeLines
+      .on("mouseenter", function (event, d) {
+        const group = d3.select(this);
+        const marker = svg.select("#arrowhead path");
+
+        group.select(".edge")
+          .attr("stroke", "#2563EB")
+          .attr("stroke-width", 2)
+          .style("filter", "url(#edge-glow)");
+
+        marker.attr("stroke", "#2563EB")
+          .attr("stroke-width", 2);
+
+      })
+      .on("mouseleave", function (event, d) {
+        const group = d3.select(this);
+        const isSelected = group.classed("selected");
+        const marker = svg.select("#arrowhead path");
+
+        group.select(".edge")
+          .attr("stroke", isSelected ? "#2563EB" : "#0EA5E9")
+          .attr("stroke-width", isSelected ? 2 : 1.5)
+          .style("filter", isSelected ? "url(#edge-glow)" : null);
+
+        marker.attr("stroke", isSelected ? "#2563EB" : "#0EA5E9")
+          .attr("stroke-width", isSelected ? 2 : 1.5);
+
+      });
 
     // 엣지 클릭 이벤트
     edgeLines.select(".edge-hit-area").on("click", (event, edge) => {
@@ -683,10 +735,9 @@ const GraphVisualization = ({
     });
 
     // 사각형 노드 그리기
-    // eslint-disable-next-line
     const rectangleNodes = nodeGroup
       .selectAll("rect")
-      .data(graphData.nodes.filter((d) => d.properties.label !== "Joint")) // Joint 노드 필터링
+      .data(graphData.nodes.filter((d) => d.properties.label !== "Joint" && d.properties.label !== "__joint__"))
       .enter()
       .append("rect")
       .attr("class", "node")
@@ -694,14 +745,17 @@ const GraphVisualization = ({
       .attr("y", (d) => Math.min(d.position[0][1], d.position[1][1]))
       .attr("width", (d) => Math.abs(d.position[1][0] - d.position[0][0]))
       .attr("height", (d) => Math.abs(d.position[1][1] - d.position[0][1]))
-      .attr("fill", "#fff")
+      .attr("fill", "#ffffff")
+      .attr("stroke", "#e0e0e0")
+      .attr("stroke-width", "2")
+      .attr("rx", "6")
+      .attr("ry", "6")
       .attr("opacity", nodeOpacity)
       .attr("pointer-events", "all")
       .attr("cursor", "move")
       .call(nodeDrag);
 
     // 원형 노드 그리기
-    // eslint-disable-next-line
     const circleNodes = nodeGroup
       .selectAll("circle")
       .data(graphData.nodes)
@@ -709,22 +763,18 @@ const GraphVisualization = ({
       .append("circle")
       .attr("cx", (d) => getCenter(d)[0])
       .attr("cy", (d) => getCenter(d)[1])
-      .attr("r", (d) =>
-        d.properties.label === "Joint" ? getRadius(d) * 2 : getRadius(d)
-      )
-      .attr("fill", (d) =>
-        d.properties.label === "Joint" ? "#ffa500" : "#0078d4"
-      )
-      .attr("stroke", (d) => (d.properties.label === "Joint" ? "none" : "#333"))
-      .attr("stroke-width", (d) => (d.properties.label === "Joint" ? 0 : 2))
+      .attr("r", (d) => d.properties.label === "Joint" || d.properties.label === "__joint__" ? getRadius(d) * 2 : getRadius(d))
+      .attr("fill", (d) => (d.properties.label === "Joint" || d.properties.label === "__joint__") ? "#FFB74D" : "#2196F3")
+      .attr("stroke", (d) => (d.properties.label === "Joint" || d.properties.label === "__joint__") ? "none" : "#1976D2")
+      .attr("stroke-width", (d) => (d.properties.label === "Joint" || d.properties.label === "__joint__") ? 0 : 2)
       .attr("pointer-events", "all")
       .attr("cursor", "move")
       .call(nodeDrag);
 
-    // 노드 이름 텍스트 추가 (Joint 제외)
+    // 노드 이름 텍스트 추가
     nodeGroup
       .selectAll("text")
-      .data(graphData.nodes.filter((d) => d.properties.label !== "Joint")) // Joint 노드 필터링
+      .data(graphData.nodes.filter((d) => d.properties.label !== "Joint" && d.properties.label !== "__joint__"))
       .enter()
       .append("text")
       .attr("x", (d) => getCenter(d)[0])
@@ -733,30 +783,27 @@ const GraphVisualization = ({
       .attr("pointer-events", "none")
       .attr("dominant-baseline", "middle")
       .text((d) => d.properties.label)
-      .style(
-        "font-size",
-        (d) =>
-          `${Math.min(
-            (d.position[1][0] - d.position[0][0]) / 9,
-            (d.position[1][1] - d.position[0][1]) / 9
-          )}px`
+      .style("font-size", (d) =>
+        `${Math.min(
+          (d.position[1][0] - d.position[0][0]) / 9,
+          (d.position[1][1] - d.position[0][1]) / 9
+        )}px`
       )
-      .style("font-family", "Arial")
-      .style("fill", "white")
+      .style("font-family", "Inter, system-ui, sans-serif")
+      .style("font-weight", "600")
+      .style("fill", "#ffffff")  // 텍스트 색상
+      .style("text-shadow", "2px 2px 4px rgba(0, 0, 0, 0.4)")  // 그림자 설정
       .call(nodeDrag);
 
+    // 리사이즈 핸들
     const handleSize = Math.max(
       5,
       Math.min(
         12,
-        20 *
-        (viewBox.width / 1000) *
-        (viewBox.height / 1000) *
-        (1 / viewBox.scale)
+        20 * (viewBox.width / 1000) * (viewBox.height / 1000) * (1 / viewBox.scale)
       )
     );
 
-    // eslint-disable-next-line
     const cornerHandles = nodeGroup
       .selectAll(".resize-handle")
       .data(
@@ -771,18 +818,15 @@ const GraphVisualization = ({
       .enter()
       .append("rect")
       .attr("class", "resize-handle")
-      .attr("width", d => d.properties.label === "Joint" ? 0 : handleSize)
-      .attr("height", d => d.properties.label === "Joint" ? 0 : handleSize)
-      .attr("fill", "#0078d4")
+      .attr("width", d => (d.properties.label === "Joint" || d.properties.label === "__joint__") ? 0 : handleSize)
+      .attr("height", d => (d.properties.label === "Joint" || d.properties.label === "__joint__") ? 0 : handleSize)
+      .attr("fill", "#2196F3")
+      .attr("rx", "2")
+      .attr("ry", "2")
       .attr("opacity", 0)
-      .attr("pointer-events", d => d.properties.label === "Joint" ? "none" : "all")
+      .attr("pointer-events", d => (d.properties.label === "Joint" || d.properties.label === "__joint__") ? "none" : "all")
       .attr("cursor", d => {
-        const cursors = [
-          "nwse-resize", // 좌상단
-          "nesw-resize", // 우상단
-          "nesw-resize", // 좌하단
-          "nwse-resize", // 우하단
-        ];
+        const cursors = ["nwse-resize", "nesw-resize", "nesw-resize", "nwse-resize"];
         return cursors[d.cornerIndex];
       })
       .attr("x", d => {
@@ -897,51 +941,78 @@ const GraphVisualization = ({
 
     const createTooltip = (event, d) => {
       const [mouseX, mouseY] = d3.pointer(event);
+
+      // 기존 툴팁 제거
+      svg.selectAll(".tooltip").remove();
+
       const tooltipGroup = svg
         .append("g")
         .attr("class", "tooltip")
-        .style("pointer-events", "none");
+        .style("pointer-events", "none")
+        .style("opacity", 0);
 
       // 텍스트 요소 추가
       const textElement = tooltipGroup
         .append("text")
-        .attr("x", mouseX + 15)
-        .attr("y", mouseY + 25)
+        .attr("x", mouseX + 12)
+        .attr("y", mouseY + 20)
         .text(
-          `${d.properties.label}${d.properties.text ? `, ${d.properties.text}` : ""
-          }`
+          `${d.properties.label}${d.properties.text ? `, ${d.properties.text}` : ""}`
         )
         .style("fill", "#ffffff")
         .style(
           "font-size",
           `${Math.max(
-            Math.sqrt(viewBox.width * viewBox.height) / 80, // 최소값
+            Math.sqrt(viewBox.width * viewBox.height) / 80,
             Math.min(
-              Math.sqrt(viewBox.width * viewBox.height) / 50, // 최대값
+              Math.sqrt(viewBox.width * viewBox.height) / 50,
               (50 * Math.sqrt(viewBox.width * viewBox.height)) /
               2000 /
               (1 + Math.log(viewBox.scale + 1))
             )
           )}px`
         )
-        .style("font-weight", "bold")
-        .style("font-family", "Arial, sans-serif")
+        .style("font-weight", "400")
+        .style("font-family", "'Pretendard', 'Noto Sans KR', sans-serif")
         .style("alignment-baseline", "middle");
 
-      // 텍스트 크기 측정 및 배경 추가
+      // 텍스트 크기 측정
       const textBBox = textElement.node().getBBox();
+      const fontSize = parseFloat(textElement.style("font-size"));
+
+      // 폰트 크기에 따른 동적 패딩 계산
+      const paddingX = Math.max(4, Math.min(8, fontSize * 0.3));
+      const paddingY = Math.max(3, Math.min(6, fontSize * 0.25));
+
+      // 배경 박스 추가
       tooltipGroup
         .insert("rect", "text")
-        .attr("x", textBBox.x - 10)
-        .attr("y", textBBox.y - 10)
-        .attr("width", textBBox.width + 20)
-        .attr("height", textBBox.height + 20)
-        .attr("rx", 12)
-        .attr("ry", 12)
-        .style("fill", "rgba(0, 0, 0, 0.7)")
-        .style("filter", "drop-shadow(2px 2px 6px rgba(0, 0, 0, 0.5))");
-    };
+        .attr("x", textBBox.x - paddingX)
+        .attr("y", textBBox.y - paddingY)
+        .attr("width", textBBox.width + (paddingX * 2))
+        .attr("height", textBBox.height + (paddingY * 2))
+        .attr("rx", Math.max(3, Math.min(6, fontSize * 0.2)))
+        .attr("ry", Math.max(3, Math.min(6, fontSize * 0.2)))
+        .style("fill", "rgba(33, 33, 33, 0.85)")
+        .style("filter", "drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2))");
 
+      // 페이드인 애니메이션
+      tooltipGroup
+        .transition()
+        .duration(50)
+        .style("opacity", 1)
+        .ease(d3.easeLinear);
+
+      // 마우스가 요소를 벗어날 때 페이드아웃
+      return () => {
+        tooltipGroup
+          .transition()
+          .duration(50)
+          .style("opacity", 0)
+          .ease(d3.easeLinear)
+          .remove();
+      };
+    };
     // 이벤트 리스너 설정
     rectangleNodes
       .on("mouseenter", handleNodeMouseEnter)
@@ -974,7 +1045,7 @@ const GraphVisualization = ({
           .attr("opacity", 0);
       }
     });
-  }, [graphData, isResizing, selectedNode, bright, nodeOpacity, isCtrlPressed]);
+  }, [graphData, isResizing, selectedNode, nodeOpacity, isCtrlPressed]);
 
   const startDrawing = (e) => {
     if (!isDrawing) return;
@@ -1349,48 +1420,79 @@ const GraphVisualization = ({
 
     const createEdgeTooltip = (event, d) => {
       const [mouseX, mouseY] = d3.pointer(event);
+
+      // 기존 툴팁 제거
+      svg.selectAll(".tooltip").remove();
+
+      // 툴팁 텍스트 확인
+      const tooltipText = d.properties?.line_no;
+      if (!tooltipText) return;
+
       const tooltipGroup = svg
         .append("g")
         .attr("class", "tooltip")
-        .style("pointer-events", "none");
+        .style("pointer-events", "none")
+        .style("opacity", 0);
 
-      // 툴팁 텍스트 (여기서 필요한 정보를 표시)
-      const tooltipText = d.properties?.line_no;
-      if (!tooltipText) return;
+      // 텍스트 요소 추가
       const textElement = tooltipGroup
         .append("text")
-        .attr("x", mouseX + 15)
-        .attr("y", mouseY + 25)
+        .attr("x", mouseX + 12)
+        .attr("y", mouseY + 20)
         .text(tooltipText)
         .style("fill", "#ffffff")
         .style(
           "font-size",
           `${Math.max(
-            Math.sqrt(viewBox.width * viewBox.height) / 80, // 최소값
+            Math.sqrt(viewBox.width * viewBox.height) / 80,
             Math.min(
-              Math.sqrt(viewBox.width * viewBox.height) / 50, // 최대값
+              Math.sqrt(viewBox.width * viewBox.height) / 50,
               (50 * Math.sqrt(viewBox.width * viewBox.height)) /
               2000 /
               (1 + Math.log(viewBox.scale + 1))
             )
           )}px`
         )
-        .style("font-weight", "bold")
-        .style("font-family", "Arial, sans-serif")
+        .style("font-weight", "400")
+        .style("font-family", "'Pretendard', 'Noto Sans KR', sans-serif")
         .style("alignment-baseline", "middle");
 
-      // 배경 사각형 추가
+      // 텍스트 크기 측정
       const textBBox = textElement.node().getBBox();
+      const fontSize = parseFloat(textElement.style("font-size"));
+
+      // 폰트 크기에 따른 동적 패딩 계산
+      const paddingX = Math.max(4, Math.min(8, fontSize * 0.3));
+      const paddingY = Math.max(3, Math.min(6, fontSize * 0.25));
+
+      // 배경 박스 추가
       tooltipGroup
         .insert("rect", "text")
-        .attr("x", textBBox.x - 10)
-        .attr("y", textBBox.y - 10)
-        .attr("width", textBBox.width + 20)
-        .attr("height", textBBox.height + 20)
-        .attr("rx", 12)
-        .attr("ry", 12)
-        .style("fill", "rgba(0, 0, 0, 0.7)")
-        .style("filter", "drop-shadow(2px 2px 6px rgba(0, 0, 0, 0.5))");
+        .attr("x", textBBox.x - paddingX)
+        .attr("y", textBBox.y - paddingY)
+        .attr("width", textBBox.width + (paddingX * 2))
+        .attr("height", textBBox.height + (paddingY * 2))
+        .attr("rx", Math.max(3, Math.min(6, fontSize * 0.2)))
+        .attr("ry", Math.max(3, Math.min(6, fontSize * 0.2)))
+        .style("fill", "rgba(33, 33, 33, 0.85)")
+        .style("filter", "drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2))");
+
+      // 페이드인 애니메이션
+      tooltipGroup
+        .transition()
+        .duration(50)
+        .style("opacity", 1)
+        .ease(d3.easeLinear);
+
+      // 마우스가 요소를 벗어날 때 페이드아웃
+      return () => {
+        tooltipGroup
+          .transition()
+          .duration(50)
+          .style("opacity", 0)
+          .ease(d3.easeLinear)
+          .remove();
+      };
     };
 
     const removeTooltip = () => {
@@ -1432,6 +1534,7 @@ const GraphVisualization = ({
 
   return (
     <div className="w-[65vw] h-[88vh] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+
       <LabelSelectorPopup
         isOpen={isLabelPopupOpen}
         onClose={() => {
@@ -1490,7 +1593,9 @@ const GraphVisualization = ({
           />
         )}
       </svg>
+
     </div>
+
   );
 };
 

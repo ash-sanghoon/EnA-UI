@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { LoadingSpinner } from "./components/common/LoadingSpinner";
 
 const Header = React.lazy(() => import("./components/layout/Header"));
 const Sidebar = React.lazy(() => import("./components/layout/Sidebar"));
@@ -33,7 +34,7 @@ const App = () => {
   }
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div className="flex items-center justify-center h-screen"><LoadingSpinner /></div>}>
       <BrowserRouter>
         <div className="flex h-screen">
           <Sidebar selectedProject={selectedProject} />
@@ -42,7 +43,7 @@ const App = () => {
             <main className="flex-1 overflow-auto bg-gray-50">
               <Routes>
                 <Route path="/" element={<DashboardView />} />
-                <Route path="/projects" element={<ProjectsView  setSelectedProject={setSelectedProject}/>} />
+                <Route path="/projects" element={<ProjectsView setSelectedProject={setSelectedProject} />} />
                 <Route path="/symbols" element={<SymbolsView />} />
                 <Route path="/results/:projectId" element={<ResultsView />} />
                 <Route path="/unrecognized/:drawingId/:runId" element={<UnrecognizedView />} />

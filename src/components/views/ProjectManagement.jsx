@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { X, Upload } from "lucide-react";
+import { Upload, Play, Check, Trash2 } from "lucide-react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import { TiEdit } from "react-icons/ti";
@@ -19,6 +19,13 @@ const initialProjectState = {
   drawings: [],
 };
 
+// 드롭다운 옵션 리스트
+const MODEL_OPTIONS = [
+  { id: 8, label: "YOLO", value: "yolo" },
+  { id: 9, label: "YOLOv3", value: "yolov3" },
+  { id: 10, label: "YOLOv4", value: "yolov4" },
+];
+
 const ProjectManagement = () => {
   // 상태 관리
   const [project, setProject] = useState(initialProjectState);
@@ -32,8 +39,34 @@ const ProjectManagement = () => {
   const saveTimer = useRef(null);
   const formDataRef = useRef(project);
   const dragRef = useRef(null);
+  const dropdownRefs = useRef([]);
   const { projectId } = useParams();
   const navigate = useNavigate();
+
+  const [dropdownStates, setDropdownStates] = useState([]);
+
+  // 드롭다운 상태 초기화
+  useEffect(() => {
+    setDropdownStates(project.drawings.map(() => false));
+    // dropdownRefs 배열 초기화
+    dropdownRefs.current = project.drawings.map(() => React.createRef());
+  }, [project.drawings]);
+
+  // 전역 클릭 이벤트 리스너
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      dropdownRefs.current.forEach((ref, index) => {
+        if (ref.current && !ref.current.contains(event.target)) {
+          setDropdownStates(prev => prev.map((state, i) => i === index ? false : state));
+        }
+      });
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // project 상태 변경 시 ref 업데이트
   useEffect(() => {
@@ -66,6 +99,19 @@ const ProjectManagement = () => {
   useEffect(() => {
     fetchProjectDetails();
   }, [projectId]);
+
+  const handleDropdownToggle = (index) => {
+    setDropdownStates(prevStates =>
+      prevStates.map((state, i) => i === index ? !state : false)
+    );
+  };
+
+  const handleOptionSelect = (index, option) => {
+    setDropdownStates(prevStates =>
+      prevStates.map(() => false)
+    );
+    console.log(`${option.label} 모델 실행 for drawing ${project.drawings[index].id}`);
+  };
 
   // 이벤트 핸들러
   const handleChange = (e) => {
@@ -135,6 +181,7 @@ const ProjectManagement = () => {
       alert("파일 삭제에 실패했습니다.");
     }
   };
+
   // 네비게이션 핸들러
   const handleDrawingClick = (drawing) => {
     navigate(`/unrecognized/${drawing.uuid}/0`);
@@ -377,7 +424,7 @@ const ProjectManagement = () => {
         {isLoading && <LoadingSpinner />}
 
         <div className="grid grid-cols-3 gap-8">
-          {project.drawings.map((drawing) => (
+          {project.drawings.map((drawing, index) => (
             <div
               key={drawing.uuid}
               className="border rounded-lg bg-white p-4 w-110 h-90 flex flex-col justify-between shadow-sm hover:border-[#A294F9]"
@@ -390,7 +437,7 @@ const ProjectManagement = () => {
                     defaultValue={drawing.drawing_no}
                     maxLength={10}
                     onChange={(e) =>
-                      handleDrawingNoChange(drawing.uuid, e.target.value)
+                      handleDrawingFieldChange(drawing.uuid, "drawing_no", e.target.value)
                     }
                   />
                   &nbsp;-&nbsp;
@@ -400,30 +447,52 @@ const ProjectManagement = () => {
                     defaultValue={drawing.sheet_no}
                     maxLength={4}
                     onChange={(e) =>
-                      handleSheetNoChange(drawing.uuid, e.target.value)
+                      handleDrawingFieldChange(drawing.uuid, "sheet_no", e.target.value)
                     }
                   />
                   <TiEdit />
                 </h4>
-                <div className="flex space-x-2">
-                  <button className="px-4 py-1 text-sm font-medium text-[#6A5ACD] border border-[#6A5ACD] rounded hover:border-[#7A6EDF] hover:bg-[#F0F0FF] disabled:border-[#CDC1FF] disabled:cursor-not-allowed">
-                    모델실행
+                <div
+                  ref={dropdownRefs.current[index]}
+                  key={drawing.id}
+                  className="flex space-x-2 relative"
+                >
+                  <button className="px-4 py-1 text-sm font-medium text-[#4CAF50] border border-[#4CAF50] rounded hover:border-[#66BB6A] hover:bg-[#E8F5E9] disabled:border-[#A5D6A7] disabled:cursor-not-allowed">
+                    <Check className="inline-block" />
                   </button>
-                  <button className="px-4 py-1 text-sm font-medium text-[#7E60BF] border border-[#7E60BF] rounded hover:border-red-600 hover:bg-red-100 disabled:border-[#CDC1FF] disabled:cursor-not-allowed">
-                    도면삭제
-                  </button>
-                  <button className="px-4 py-1 text-sm font-medium text-[#A294F9] border border-[#A294F9] rounded hover:border-[#42A5F5] hover:bg-[#F0F8FF] disabled:border-[#CDC1FF] disabled:cursor-not-allowed">
-                    도면완료
+
+                  <button className="px-4 py-1 text-sm font-medium text-[#F44336] border border-[#F44336] rounded hover:border-[#EF5350] hover:bg-[#FFEBEE] disabled:border-[#EF9A9A] disabled:cursor-not-allowed">
+                    <Trash2 className="inline-block" />
                   </button>
                 </div>
               </div>
               <div className="grid grid-cols-7 gap-8">
-                <div className="col-span-4">
+                <div className="col-span-4 relative">
+                  <button
+                    className="absolute top-3 right-3 p-2 bg-[#a294f9] text-sm font-medium text-[#7E60BF] border-2 border-[#7E60BF] rounded-full hover:border-red-600 hover:bg-red-100 disabled:border-[#CDC1FF] disabled:cursor-not-allowed transition-all duration-200"
+                    onClick={() => { handleDropdownToggle(index) }}
+                  >
+                    <Play className="w-4 h-4 text-white" />
+                    {dropdownStates[index] && (
+                      <div className="absolute top-full left-0 mr-2 mt-2 bg-white border border-gray-300 rounded-lg shadow-xl w-40 z-10 transition-all ease-in-out duration-200">
+                        <ul className="py-1">
+                          {MODEL_OPTIONS.map((option) => (
+                            <li
+                              key={option.id}
+                              className="px-4 py-2 cursor-pointer text-sm text-gray-700 rounded-md transition-all ease-in-out duration-200 hover:bg-indigo-100 hover:text-indigo-600"
+                              onClick={() => handleOptionSelect(index, option)}
+                            >
+                              {option.label}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </button>
                   <img
                     src={"/api/files/view/" + drawing.thumnbnail_uuid}
                     alt={drawing.drawing_no}
                     className="w-full h-auto object-contain cursor-pointer mb-2"
-                    onClick={() => handleDrawingClick(drawing)}
                   />
                 </div>
 
@@ -444,8 +513,9 @@ const ProjectManagement = () => {
                           {run.run_date} &nbsp;&nbsp;&nbsp;
                           <button
                             className="px-2 py-0 mt-1 text-sm font-medium text-white bg-[#A294F9] rounded hover:bg-[#9283ef] disabled:bg-[#ccc] disabled:cursor-not-allowed"
-                            onClick={() => {
-                              handleDrawingRunClick(drawing.uuid, run);
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDrawingRunClick(drawing, run);
                             }}
                           >
                             수정

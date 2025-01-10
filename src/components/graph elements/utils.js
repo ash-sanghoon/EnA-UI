@@ -148,34 +148,55 @@ const handleNodeHoverLabel = (svgRef, hoverClass, graphData, viewBox) => {
     if (!svgRef.current || hoverClass === null) return;
 
     const svg = d3.select(svgRef.current);
+
+    // 기존 호버 레이블 제거
+    svg.selectAll(".hover-label").remove();
+
     const matchingNodes = graphData.nodes.filter(
         node => node.properties?.label === hoverClass ||
             node.properties?.line_no === hoverClass
     );
 
-    svg.selectAll(".hover-label").remove();
-
     matchingNodes.forEach(node => {
         const topRight = [node.position[0][0], node.position[0][1]];
 
-        svg.append("text")
+        // 텍스트 레이블 추가
+        const label = svg.append("text")
             .attr("class", "hover-label")
             .attr("x", topRight[0])
             .attr("y", topRight[1] - 15)
             .attr("text-anchor", "start")
             .attr("dominant-baseline", "baseline")
-            .attr("fill", "white")
-            .attr("font-weight", "bold")
-            .attr("font-size", `${Math.max(
-                Math.sqrt(viewBox.width * viewBox.height) / 80,
-                Math.min(
-                    Math.sqrt(viewBox.width * viewBox.height) / 50,
-                    (50 * Math.sqrt(viewBox.width * viewBox.height)) / 2000 / (1 + Math.log(viewBox.scale + 1))
-                )
-            )}px`)
             .attr("pointer-events", "none")
+            .style("opacity", 0)
             .text(hoverClass);
+
+        // 텍스트 스타일링
+        label
+            .style("font-family", "'Pretendard', system-ui, sans-serif")
+            .style("font-weight", "600") // 조금 더 두껍게
+            .style("font-size", calculateFontSize(viewBox))
+            .style("fill", "#ffffff")  // 밝은 흰색
+            .style("stroke", "rgba(0, 0, 0, 0.8)") // 검은색 외곽선
+            .style("stroke-width", "1.5px")
+            .style("paint-order", "stroke fill")
+            .style("letter-spacing", "0.03em") // 적당한 자간
+            .style("text-shadow", "0 1px 3px rgba(0, 0, 0, 0.5)"); // 더 부드러운 그림자
+
+        // 페이드인 애니메이션
+        label.transition()
+            .duration(100) // 애니메이션 속도 더 빠르게
+            .style("opacity", 1);
     });
+};
+
+// 뷰박스 크기에 따른 폰트 크기 계산
+const calculateFontSize = (viewBox) => {
+    const baseSize = Math.sqrt(viewBox.width * viewBox.height) / 80;
+    const maxSize = Math.sqrt(viewBox.width * viewBox.height) / 50;
+    const scaledSize = (50 * Math.sqrt(viewBox.width * viewBox.height)) / 2000 / (1 + Math.log(viewBox.scale + 1));
+
+    return `${Math.max(baseSize, Math.min(maxSize, scaledSize))}px`;
 };
 
 // 엣지 호버 레이블 핸들러
@@ -233,5 +254,10 @@ const handleBackgroundBrightness = (svgRef, hoverClass, bright) => {
         .attr("filter", hoverClass !== null ? "brightness(0.3)" : `brightness(${bright})`);
 };
 
+// 노드가 Joint인지 확인하는 함수
+const isJointNode = (node) => {
+    const label = node.properties.label.toLowerCase();
+    return label === "joint" || label === "__joint__";
+};
 
-export { getEdgeCoordinates, getCenter, getRadius, handleHoverEffect, handleEdgeOpacityEffect, handleNodeHoverLabel, handleEdgeHoverLabel, handleBackgroundBrightness };
+export { getEdgeCoordinates, getCenter, getRadius, handleHoverEffect, handleEdgeOpacityEffect, handleNodeHoverLabel, handleEdgeHoverLabel, handleBackgroundBrightness, isJointNode };
